@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "flourish",
-    "slug": "flourish",
+    "name": "flourish-app",
+    "slug": "flourish-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "flourish",
+    "scheme": "flourishapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
