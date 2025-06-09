@@ -1,4 +1,5 @@
 // src/lib/appwrite/storage.ts
+
 import { ID } from 'react-native-appwrite';
 import { appwriteService, APPWRITE_CONFIG } from './config';
 import type { ApiResponse } from '../../types';
@@ -85,8 +86,12 @@ class StorageService {
         const baseUrl = appwriteService.getFileUrl(bucketId, fileId);
         const params = new URLSearchParams();
 
-        if (width) params.append('width', width.toString());
-        if (height) params.append('height', height.toString());
+        if (width) {
+            params.append('width', width.toString());
+        }
+        if (height) {
+            params.append('height', height.toString());
+        }
 
         return params.toString() ? `${baseUrl}&${params.toString()}` : baseUrl;
     }

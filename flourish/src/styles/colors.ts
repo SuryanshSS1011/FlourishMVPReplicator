@@ -1,4 +1,5 @@
 // src/styles/colors.ts
+
 export const colors = {
     // Primary brand colors from design manual
     primary: {

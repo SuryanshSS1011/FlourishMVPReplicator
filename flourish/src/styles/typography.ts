@@ -1,4 +1,5 @@
 // src/styles/typography.ts
+
 export const typography = {
     fonts: {
         primary: 'Roboto',

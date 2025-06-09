@@ -1,4 +1,5 @@
 // src/types/store.ts
+
 export interface AuthStore {
     user: User | null;
     session: Session | null;

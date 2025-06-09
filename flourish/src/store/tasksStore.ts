@@ -1,6 +1,6 @@
 // src/store/tasksStore.ts
 import { create } from 'zustand';
-import { taskService } from '../lib/appwrite/tasks';
+import { taskService } from '../lib/appwrite';
 import type { TasksStore, Task, Suggestion } from '../types';
 
 export const useTasksStore = create<TasksStore>((set, get) => ({

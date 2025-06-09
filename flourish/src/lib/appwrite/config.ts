@@ -79,7 +79,9 @@ class AppwriteService {
 
     // Get file URL helper
     getFileUrl(bucketId: string, fileId: string): string {
-        if (!fileId) return 'https://via.placeholder.com/150';
+        if (!fileId) {
+            return 'https://via.placeholder.com/150';
+        }
         return `${APPWRITE_CONFIG.endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${APPWRITE_CONFIG.projectId}`;
     }
 }

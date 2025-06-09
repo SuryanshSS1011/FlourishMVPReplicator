@@ -1,6 +1,6 @@
 // src/store/plantsStore.ts
 import { create } from 'zustand';
-import { plantService } from '../lib/appwrite/plants';
+import { plantService } from '../lib/appwrite';
 import type { PlantsStore, Plant, UserPlant, Nutrient } from '../types';
 
 export const usePlantsStore = create<PlantsStore>((set, get) => ({

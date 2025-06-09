@@ -1,4 +1,5 @@
 // src/types/navigation.ts
+
 export type RootStackParamList = {
     // Auth screens
     SplashScreen: undefined;

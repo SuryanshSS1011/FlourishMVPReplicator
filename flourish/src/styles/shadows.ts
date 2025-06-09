@@ -1,4 +1,5 @@
 // src/styles/shadows.ts
+
 import { colors } from './colors';
 
 export const shadows = {
