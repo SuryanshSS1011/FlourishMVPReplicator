@@ -1,26 +1,22 @@
+// app/onboarding.tsx
+
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/app/_layout';
+import { router } from 'expo-router';
+import { theme } from '../src/styles';
 
 const { width, height } = Dimensions.get('window');
 
-type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-// Onboarding Page Component for individual screens
 const OnboardingPage = ({
     title,
     description,
     imagePath,
-    backgroundColor = "#DEDED0",
-    accentColor = "#164432"
+    backgroundColor = theme.colors.primary[100],
 }: {
     title: string;
     description: string;
     imagePath: any;
     backgroundColor?: string;
-    accentColor?: string;
 }) => {
     return (
         <View style={[styles.page, { backgroundColor }]}>
@@ -35,8 +31,7 @@ const OnboardingPage = ({
     );
 };
 
-// Pagination Component
-const Pagination = ({ activeIndex, length, accentColor = "#164432" }: { activeIndex: number; length: number; accentColor?: string }) => {
+const Pagination = ({ activeIndex, length }: { activeIndex: number; length: number }) => {
     return (
         <View style={styles.paginationContainer}>
             {Array.from({ length }).map((_, index) => (
@@ -45,8 +40,7 @@ const Pagination = ({ activeIndex, length, accentColor = "#164432" }: { activeIn
                     style={[
                         styles.paginationDot,
                         {
-                            backgroundColor: activeIndex === index ? accentColor : "#78A88A",
-                            borderColor: activeIndex === index ? accentColor : "#78A88A",
+                            backgroundColor: activeIndex === index ? theme.colors.primary[900] : theme.colors.primary[500],
                         },
                     ]}
                 />
@@ -55,9 +49,7 @@ const Pagination = ({ activeIndex, length, accentColor = "#164432" }: { activeIn
     );
 };
 
-// Main Onboarding Component
-const Onboarding = () => {
-    const navigation = useNavigation<OnboardingScreenNavigationProp>();
+export default function Onboarding() {
     const [activeIndex, setActiveIndex] = useState(0);
     const scrollViewRef = useRef<ScrollView>(null);
 
@@ -65,15 +57,9 @@ const Onboarding = () => {
         if (activeIndex < 2) {
             setActiveIndex(activeIndex + 1);
             scrollViewRef.current?.scrollTo({ x: width * (activeIndex + 1), animated: true });
-        } 
-        // Uncomment this when the RegisterScreen is available
-/*      
-        else {
-            
-            // Navigate to Register Screen
-            navigation.navigate('RegisterScreen');
-        }        
-*/
+        } else {
+            router.push('/(auth)/register');
+        }
     };
 
     const handleBack = () => {
@@ -83,32 +69,25 @@ const Onboarding = () => {
         }
     };
 
-// Uncomment this when the RegisterScreen is available
     const handleSkip = () => {
-//        navigation.navigate('RegisterScreen');
+        router.push('/(auth)/register');
     };
 
     const onboardingData = [
         {
             title: "Personalized Wellness Journey",
             description: "Select wellness areas to focus on, and Flourish will create a personalized path to help you grow holistically.",
-            imagePath: require('@/assets/images/onboarding1.png'),
-            backgroundColor: "#DEDED0",
-            accentColor: "#164432",
+            imagePath: require('../assets/images/onboarding1.png'),
         },
         {
             title: "Plant-Based Progress Tracking",
             description: "Complete wellness tasks to earn Water Droplets, nurturing a virtual plant as you track your progress.",
-            imagePath: require('@/assets/images/onboarding2.png'),
-            backgroundColor: "#DEDED0",
-            accentColor: "#164432",
+            imagePath: require('../assets/images/onboarding2.png'),
         },
         {
             title: "Rewards and Customization",
             description: "Use Leaf currency to personalize your plants and create a space that reflects your journey.",
-            imagePath: require('@/assets/images/onboarding3.png'),
-            backgroundColor: "#DEDED0",
-            accentColor: "#164432",
+            imagePath: require('../assets/images/onboarding3.png'),
         },
     ];
 
@@ -136,8 +115,6 @@ const Onboarding = () => {
                         title={item.title}
                         description={item.description}
                         imagePath={item.imagePath}
-                        backgroundColor={item.backgroundColor}
-                        accentColor={item.accentColor}
                     />
                 ))}
             </ScrollView>
@@ -151,14 +128,10 @@ const Onboarding = () => {
                     <View style={styles.emptySpace} />
                 )}
 
-                <Pagination
-                    activeIndex={activeIndex}
-                    length={onboardingData.length}
-                    accentColor={onboardingData[activeIndex].accentColor}
-                />
+                <Pagination activeIndex={activeIndex} length={onboardingData.length} />
 
                 <TouchableOpacity
-                    style={[styles.nextButton, { backgroundColor: "#2B8761" }]}
+                    style={[styles.nextButton, { backgroundColor: theme.colors.primary[700] }]}
                     onPress={handleNext}
                 >
                     <Text style={styles.nextButtonText}>
@@ -166,7 +139,7 @@ const Onboarding = () => {
                     </Text>
                     {activeIndex < 2 && (
                         <Image
-                            source={require('@/assets/images/arrow-right.png')}
+                            source={require('../assets/images/arrow-right.png')}
                             style={styles.arrowIcon}
                         />
                     )}
@@ -176,19 +149,19 @@ const Onboarding = () => {
             {activeIndex > 0 && (
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                     <Image
-                        source={require('@/assets/images/arrow-left.png')}
+                        source={require('../assets/images/arrow-left.png')}
                         style={styles.backArrowIcon}
                     />
                 </TouchableOpacity>
             )}
         </View>
     );
-};
+}
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#DEDED0',
+        backgroundColor: theme.colors.primary[100],
     },
     page: {
         width,
@@ -212,18 +185,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
+        fontSize: theme.typography.sizes['4xl'],
+        fontWeight: theme.typography.weights.bold,
         textAlign: 'center',
         marginBottom: 10,
-        fontFamily: 'Roboto',
+        fontFamily: theme.typography.fonts.primary,
+        color: theme.colors.text.primary,
     },
     description: {
-        fontSize: 16,
+        fontSize: theme.typography.sizes.lg,
         textAlign: 'center',
-        color: '#504D4D',
-        fontFamily: 'Roboto',
-        fontWeight: '500',
+        color: theme.colors.text.secondary,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.medium,
         lineHeight: 22,
     },
     footer: {
@@ -246,7 +220,6 @@ const styles = StyleSheet.create({
         height: 10,
         borderRadius: 5,
         marginHorizontal: 5,
-        borderWidth: 1,
     },
     nextButton: {
         flexDirection: 'row',
@@ -255,26 +228,19 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 30,
         borderRadius: 5,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 2,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        ...theme.shadows.sm,
     },
     nextButtonText: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '500',
-        fontFamily: 'Ubuntu',
+        color: theme.colors.text.inverse,
+        fontSize: theme.typography.sizes.base,
+        fontWeight: theme.typography.weights.medium,
+        fontFamily: theme.typography.fonts.secondary,
     },
     arrowIcon: {
         width: 16,
         height: 16,
         marginLeft: 8,
-        tintColor: 'white',
+        tintColor: theme.colors.text.inverse,
     },
     backButton: {
         position: 'absolute',
@@ -285,20 +251,19 @@ const styles = StyleSheet.create({
     backArrowIcon: {
         width: 16,
         height: 16,
-        tintColor: '#164432',
+        tintColor: theme.colors.primary[900],
     },
     skipButton: {
         padding: 10,
     },
     skipText: {
-        color: '#164432',
-        fontSize: 16,
-        fontWeight: '500',
-        fontFamily: 'Ubuntu',
+        color: theme.colors.primary[900],
+        fontSize: theme.typography.sizes.lg,
+        fontWeight: theme.typography.weights.medium,
+        fontFamily: theme.typography.fonts.secondary,
     },
     emptySpace: {
         width: 50,
     },
 });
 
-export default Onboarding;

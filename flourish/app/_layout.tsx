@@ -1,78 +1,71 @@
-import { useEffect, useState } from 'react';
-import { View } from 'react-native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+// app/_layout.tsx
+import { useEffect } from 'react';
+import { SplashScreen, Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StyleSheet } from 'react-native';
+import { useAuthStore } from '../src/store/authStore';
 
-import SplashScreen from './SplashScreen';
-import Onboarding from './Onboarding';
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
-// Define the types for our navigation
-export type RootStackParamList = {
-  SplashScreen: undefined;
-  OnboardingScreen: undefined;
-  // Add other screens as needed
-};
+export default function RootLayout() {
+  const { checkSession } = useAuthStore();
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-export default function Layout() {
-  const [isReady, setIsReady] = useState(false);
+  // Load custom fonts
+  const [fontsLoaded] = useFonts({
+    'Roboto': require('../assets/fonts/Roboto-Regular.ttf'),
+    'Roboto-Bold': require('../assets/fonts/Roboto-Bold.ttf'),
+    'Ubuntu': require('../assets/fonts/Ubuntu-Regular.ttf'),
+    'Ubuntu-Bold': require('../assets/fonts/Ubuntu-Bold.ttf'),
+  });
 
   useEffect(() => {
-    // Initialize any required resources here
     async function prepare() {
       try {
-        // Preload splash screen images
-        const images = [
-          require('@/assets/images/splash1.png'),
-          require('@/assets/images/splash2.png'),
-          require('@/assets/images/splash3.png'),
-          require('@/assets/images/splash4.png'),
-          require('@/assets/images/splash5.png'),
-          require('@/assets/images/splash6.png'),
-          // Preload onboarding images
-          require('@/assets/images/onboarding1.png'),
-          require('@/assets/images/onboarding2.png'),
-          require('@/assets/images/onboarding3.png'),
-          require('@/assets/images/arrow-right.png'),
-          require('@/assets/images/arrow-left.png'),
-          require('@/assets/images/Flourish-logo.png'),
-        ];
-        // You can add other initialization here if needed
+        // Check existing session
+        await checkSession();
+
+        // Preload any critical resources here
+
       } catch (e) {
-        console.warn(e);
+        console.warn('Error during app initialization:', e);
       } finally {
-        setIsReady(true);
+        // Hide splash screen once everything is ready
+        if (fontsLoaded) {
+          await SplashScreen.hideAsync();
+        }
       }
     }
 
     prepare();
-  }, []);
+  }, [fontsLoaded, checkSession]);
 
-  if (!isReady) {
-    return <View style={{ flex: 1 }} />;
+  if (!fontsLoaded) {
+    return null;
   }
 
   return (
-    <Stack.Navigator initialRouteName="SplashScreen">
-      <Stack.Screen
-        name="SplashScreen"
-        component={SplashScreen}
-        options={{
+    <GestureHandlerRootView style={styles.container}>
+      <StatusBar style="auto" />
+      <Stack
+        screenOptions={{
           headerShown: false,
+          animation: 'slide_from_right',
         }}
-      />
-      <Stack.Screen
-        name="OnboardingScreen"
-        component={Onboarding}
-        options={{
-          headerShown: false,
-        }}
-      />
-      {/* Add other screens here as needed */}
-      {/* <Stack.Screen name="RegisterScreen" component={RegisterScreen} /> */}
-      {/* <Stack.Screen name="LoginScreen" component={LoginScreen} /> */}
-      {/* <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} /> */}
-      {/* <Stack.Screen name="DashboardScreen" component={DashboardScreen} /> */}
-    </Stack.Navigator>
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="(app)" />
+      </Stack>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
+
