@@ -8,7 +8,7 @@ import {
     TextStyle,
     ActivityIndicator,
 } from 'react-native';
-import { theme } from '../../styles/colors';
+import { theme } from '../../styles';
 import type { ButtonProps } from '../../types';
 
 export const Button: React.FC<ButtonProps> = ({

@@ -8,7 +8,7 @@ import {
     StyleSheet,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { theme } from '../../styles/colors';
+import { theme } from '../../styles';
 import type { InputProps } from '../../types';
 
 export const Input: React.FC<InputProps> = ({

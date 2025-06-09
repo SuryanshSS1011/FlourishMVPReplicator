@@ -9,7 +9,7 @@ import {
     TouchableWithoutFeedback,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { theme } from '../../styles/colors';
+import { theme } from '../../styles';
 import type { ModalProps } from '../../types';
 
 export const Modal: React.FC<ModalProps> = ({

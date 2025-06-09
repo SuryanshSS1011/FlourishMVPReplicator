@@ -1,7 +1,7 @@
 // src/components/ui/LoadingSpinner.tsx
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { theme } from '../../styles/colors';
+import { theme } from '../../styles';
 
 interface LoadingSpinnerProps {
     message?: string;
