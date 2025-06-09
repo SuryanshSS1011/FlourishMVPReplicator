@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useLocalSearchParams } from 'expo-router';
-import { useAppwrite } from '@/providers/AppwriteProvider';
+import { useAppwrite } from '../../providers/AppwriteProvider';
 
 export default function ResetPasswordScreen() {
     const { userId, secret } = useLocalSearchParams();
