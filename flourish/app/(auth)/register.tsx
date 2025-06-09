@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { authService } from '../../src/lib/appwrite/auth';
-import { theme } from '../../src/styles/colors';
+import { theme } from '../../src/styles';
 import { Button } from '../../src/components/ui';
 
 export default function RegisterScreen() {
@@ -15,7 +15,9 @@ export default function RegisterScreen() {
     const handleLoginPress = () => router.push('/(auth)/login');
 
     const deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
-    if (!deepLink.hostname) deepLink.hostname = 'localhost';
+    if (!deepLink.hostname) {
+        deepLink.hostname = 'localhost';
+    }
     const scheme = `${deepLink.protocol}//`;
 
     const handleGooglePress = async () => {
@@ -51,25 +53,28 @@ export default function RegisterScreen() {
                 />
                 <View style={styles.buttonContainer}>
                     <View style={styles.authButtonsContainer}>
+                        <View style={styles.authButton}>
+                            <Button
+                                title="Signup"
+                                onPress={handleSignupPress}
+                                variant="outline"
+                            />
+                        </View>
+                        <View style={styles.authButton}>
+                            <Button
+                                title="Login"
+                                onPress={handleLoginPress}
+                                variant="primary"
+                            />
+                        </View>
+                    </View>
+                    <View style={styles.googleButton}>
                         <Button
-                            title="Signup"
-                            onPress={handleSignupPress}
+                            title="Login with Google"
+                            onPress={handleGooglePress}
                             variant="outline"
-                            style={styles.authButton}
-                        />
-                        <Button
-                            title="Login"
-                            onPress={handleLoginPress}
-                            variant="primary"
-                            style={styles.authButton}
                         />
                     </View>
-                    <Button
-                        title="Login with Google"
-                        onPress={handleGooglePress}
-                        variant="outline"
-                        style={styles.googleButton}
-                    />
                 </View>
             </LinearGradient>
         </View>

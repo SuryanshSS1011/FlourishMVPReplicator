@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Droplet, Heart } from 'lucide-react-native';
-
 import { databases, getAllPlants } from './appwriteGreenHouse';
 import { Query } from 'appwrite';
 import { ActiveNutrient, Nutrient, Plant, RootStackParamList, UserPlant } from './ types';

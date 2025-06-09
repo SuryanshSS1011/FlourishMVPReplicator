@@ -12,7 +12,7 @@ import {
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
-import { theme } from '../../src/styles/colors';
+import { theme } from '../../src/styles';
 import { Input, Button } from '../../src/components/ui';
 
 export default function SignupScreen() {

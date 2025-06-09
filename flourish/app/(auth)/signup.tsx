@@ -1,146 +1,123 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native';
+// app/(auth)/signup.tsx
 import React, { useState } from 'react';
-import Feather from '@expo/vector-icons/Feather';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { account, ID } from '@/lib/appwrite';
-import { RootStackParamList } from '../types';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableWithoutFeedback,
+    Keyboard,
+    Alert,
+    TouchableOpacity,
+} from 'react-native';
+import { router } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { useAuthStore } from '../../src/store/authStore';
+import { theme } from '../../src/styles';
+import { Input, Button } from '../../src/components/ui';
 
 export default function SignupScreen() {
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-
-    const togglePasswordVisibility = () => setShowPassword(!showPassword);
+    const { register, loading, error } = useAuthStore();
 
     const handleSignup = async () => {
+        if (!name || !email || !password) {
+            Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+
         try {
-            await account.create(ID.unique(), email, password, name);
-            await account.createEmailPasswordSession(email, password);
-            const user = await account.get();
-            console.log('Signed up as:', user);
-            navigation.navigate('DashboardScreen');
-        } catch (error: any) {
-            console.error('Signup error:', error);
-            Alert.alert('Signup failed', error.message || 'Please try again.');
+            await register(name, email, password);
+            if (!error) {
+                router.replace('/(app)/(tabs)/dashboard');
+            }
+        } catch (err) {
+            Alert.alert('Error', 'Registration failed. Please try again.');
         }
     };
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.container}>
-                <TouchableOpacity style={styles.backarrow} onPress={navigation.goBack}>
-                    <Feather size={21} name="arrow-left" />
+            <View style={signupStyles.container}>
+                <TouchableOpacity style={signupStyles.backButton} onPress={() => router.back()}>
+                    <Feather size={21} name="arrow-left" color={theme.colors.text.primary} />
                 </TouchableOpacity>
 
-                <Text style={styles.title}>Create an Account</Text>
-                <Text style={styles.subtitle}>Join Flourish and grow your wellness journey.</Text>
+                <Text style={signupStyles.title}>Create an Account</Text>
+                <Text style={signupStyles.subtitle}>Join Flourish and grow your wellness journey.</Text>
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Name</Text>
-                    <TextInput
-                        style={styles.input}
+                <View style={signupStyles.inputContainer}>
+                    <Input
+                        label="Name"
+                        placeholder="Enter your name"
                         value={name}
                         onChangeText={setName}
-                        placeholder="Enter your name"
-                        placeholderTextColor="#94A3B8"
                     />
-
-                    <Text style={styles.label}>Email</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={email}
-                        autoCapitalize="none"
-                        onChangeText={setEmail}
+                    <Input
+                        label="Email"
                         placeholder="Enter your email"
-                        placeholderTextColor="#94A3B8"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
                     />
-
-                    <Text style={styles.label}>Password</Text>
-                    <View style={styles.passwordRow}>
-                        <TextInput
-                            style={styles.input}
-                            value={password}
-                            onChangeText={setPassword}
-                            placeholder="Enter your password"
-                            placeholderTextColor="#94A3B8"
-                            secureTextEntry={!showPassword}
-                        />
-                        <Feather
-                            style={styles.icon}
-                            size={24}
-                            name={showPassword ? 'eye-off' : 'eye'}
-                            onPress={togglePasswordVisibility}
-                        />
-                    </View>
+                    <Input
+                        label="Password"
+                        placeholder="Enter your password"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry
+                    />
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleSignup}>
-                    <Text style={{ color: 'white' }}>Sign Up</Text>
-                </TouchableOpacity>
+                <Button
+                    title="Sign Up"
+                    onPress={handleSignup}
+                    loading={loading}
+                />
+
+                {error && (
+                    <Text style={signupStyles.errorText}>{error}</Text>
+                )}
             </View>
         </TouchableWithoutFeedback>
     );
 }
 
-const styles = StyleSheet.create({
+const signupStyles = StyleSheet.create({
     container: {
-        backgroundColor: '#DEDED0',
+        backgroundColor: theme.colors.primary[100],
         flex: 1,
+        paddingHorizontal: theme.spacing.xl,
     },
-    backarrow: {
+    backButton: {
         marginTop: 75,
-        marginLeft: 30,
+        marginBottom: theme.spacing.xl,
+        alignSelf: 'flex-start',
     },
     title: {
-        marginTop: 30,
-        fontSize: 30,
-        fontFamily: 'Roboto',
+        fontSize: theme.typography.sizes['6xl'],
+        fontFamily: theme.typography.fonts.primary,
         textAlign: 'center',
-        fontWeight: '700',
+        fontWeight: theme.typography.weights.bold,
+        color: theme.colors.text.primary,
+        marginBottom: theme.spacing.md,
     },
     subtitle: {
-        fontSize: 14,
+        fontSize: theme.typography.sizes.base,
         textAlign: 'center',
-        color: '#475569',
-        marginHorizontal: 40,
-        marginVertical: 10,
+        color: theme.colors.text.secondary,
+        marginBottom: theme.spacing.xl,
+        fontFamily: theme.typography.fonts.primary,
     },
     inputContainer: {
-        marginHorizontal: 20,
-        marginTop: 20,
+        marginBottom: theme.spacing.xl,
     },
-    label: {
-        fontSize: 14,
-        fontFamily: 'Roboto',
-    },
-    input: {
-        backgroundColor: 'white',
-        height: 44,
-        borderRadius: 8,
-        paddingLeft: 10,
-        marginTop: 10,
-        marginBottom: 20,
-    },
-    passwordRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    icon: {
-        position: 'absolute',
-        right: 10,
-    },
-    button: {
-        marginTop: 40,
-        width: 358,
-        height: 44,
-        backgroundColor: '#2B8761',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 30,
-        alignSelf: 'center',
+    errorText: {
+        color: theme.colors.error,
+        textAlign: 'center',
+        marginTop: theme.spacing.md,
+        fontFamily: theme.typography.fonts.primary,
     },
 });

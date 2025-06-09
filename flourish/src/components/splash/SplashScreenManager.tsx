@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import SplashScreenWithCache from './SplashScreenWithCache';
-import { imageCacheManager } from '../lib/utils/imageCache';
+import { SplashScreen } from './SplashScreen';
+import { imageCacheManager } from '../../lib/utils/imageCache';
 
 interface SplashScreenManagerProps {
     onComplete?: () => void;
@@ -44,7 +44,7 @@ export const SplashScreenManager: React.FC<SplashScreenManagerProps> = ({
     }, []);
 
     return (
-        <SplashScreenWithCache
+        <SplashScreen
             onComplete={onComplete}
             skipAnimation={skipAnimation}
             showProgress={__DEV__} // Show progress in development
@@ -52,4 +52,4 @@ export const SplashScreenManager: React.FC<SplashScreenManagerProps> = ({
     );
 };
 
-export default SplashScreen
+export default SplashScreenManager;

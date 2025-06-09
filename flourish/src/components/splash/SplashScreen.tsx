@@ -11,8 +11,8 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useSplashImages } from '../hooks/useSplashImages';
-import { theme } from '../styles/colors';
+import { useSplashImages } from '../../hooks/useSplashImages';
+import { theme } from '../../styles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,13 +34,13 @@ const FALLBACK_IMAGES = {
     splash6: require('../../assets/images/splash6.png'),
 };
 
-interface SplashScreenWithCacheProps {
+interface SplashScreenProps {
     onComplete?: () => void;
     skipAnimation?: boolean;
     showProgress?: boolean;
 }
 
-export const SplashScreenWithCache: React.FC<SplashScreenWithCacheProps> = ({
+export const SplashScreen: React.FC<SplashScreenProps> = ({
     onComplete,
     skipAnimation = false,
     showProgress = false,
@@ -283,5 +283,5 @@ const styles = StyleSheet.create({
     },
 });
 
-export default SplashScreenWithCache;
+export default SplashScreen;
 
