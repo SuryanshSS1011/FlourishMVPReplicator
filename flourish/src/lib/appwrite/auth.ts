@@ -171,7 +171,7 @@ class AuthService {
             console.log('Completing password recovery for user:', userId);
 
             // Update recovery
-            await this.account.updateRecovery(userId, secret, password, password);
+            await this.account.updateRecovery(userId, secret, password );
 
             return {
                 success: true,
@@ -200,6 +200,10 @@ class AuthService {
                 redirectUrl,
                 redirectUrl
             );
+
+            if (!loginUrl) {
+                throw new Error('Failed to create OAuth2 URL');
+            }
 
             return {
                 success: true,
@@ -325,6 +329,49 @@ class AuthService {
             return {
                 success: false,
                 message: 'Failed to update preferences',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+ * Send email verification
+ */
+    async sendEmailVerification(): Promise<ApiResponse> {
+        try {
+            await this.account.createVerification(
+                `${process.env.EXPO_PUBLIC_APP_URL}/verify`
+            );
+            return {
+                success: true,
+                message: 'Verification email sent successfully',
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Failed to send verification email',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Confirm email verification
+     */
+    async confirmEmailVerification(
+        userId: string,
+        secret: string
+    ): Promise<ApiResponse> {
+        try {
+            await this.account.updateVerification(userId, secret);
+            return {
+                success: true,
+                message: 'Email verified successfully',
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: 'Email verification failed',
                 error: error.message,
             };
         }
