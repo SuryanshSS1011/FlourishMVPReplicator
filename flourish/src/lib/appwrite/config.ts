@@ -24,9 +24,12 @@ export const APPWRITE_CONFIG = {
 
     // Storage buckets
     buckets: {
-        images: '67e227bf00075deadffc',
-        nutrients: '67ddb9b20009978262ae',
         preLogin: '68427a71002966c8331c',
+        dashboard: '67d10458003794e7043a',
+        tasks: '67d1046e0034562efa94',
+        plants: '67e227bf00075deadffc',
+        backgrounds: '67e1b2da0031720d3cac',
+        nutrients: '67ddb9b20009978262ae',
     },
 } as const;
 

@@ -19,8 +19,8 @@ import { theme } from '../../../src/styles';
 import { LoadingSpinner } from '../../../src/components/ui';
 import type { Task } from '../../../src/types';
 
-// Separate TaskItem component
-const TaskItem = ({
+// Separate TaskItem component for dashboard quick tasks
+const DashboardTaskItem = ({
     item,
     activeTab,
     onSwipeComplete,
@@ -86,21 +86,86 @@ const TaskItem = ({
         ? theme.colors.primary[500]
         : theme.colors.secondary[500];
 
+    const getTaskIconUrl = (fileId: string | null) => {
+        if (!fileId || fileId.trim() === "") {
+            return require("../../../assets/images/Waterdrop.png");
+        }
+        return { uri: `https://cloud.appwrite.io/v1/storage/buckets/67e227bf00075deadffc/files/${fileId}/view?project=67cfa24f0031e006fba3` };
+    };
+
     return (
-        <View style={styles.taskItemContainer}>
+        <View style={styles.dashboardTaskItem}>
             {/* Swipe actions backdrop */}
             <View style={[
                 styles.swipeActionsBackdrop,
                 { backgroundColor: taskBackgroundColor }
             ]}>
-                <View style={styles.pointsWrapper}>
-                    <Text style={styles.taskPoints}>{item.points}</Text>
-                    <Image
-                        source={require('../../../assets/images/Waterdrop.png')}
-                        style={styles.pointsDropletIcon}
-                    />
+                <View style={styles.dashboardSwipeActions}>
+                    <TouchableOpacity
+                        style={[styles.dashboardActionButton, styles.skipActionButton]}
+                        onPress={handleSkip}
+                    >
+                        <Text style={styles.actionButtonText}>Skip</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.dashboardActionButton, styles.completeActionButton]}
+                        onPress={handleComplete}
+                    >
+                        <Text style={styles.actionButtonText}>✓</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
+
+            {/* Task content */}
+            <Animated.View
+                style={[
+                    styles.taskContent,
+                    { transform: [{ translateX: swipeAnim }] },
+                    { backgroundColor: taskBackgroundColor }
+                ]}
+                {...panResponder.panHandlers}
+            >
+                {/* Task icon */}
+                <View style={[
+                    styles.taskIconContainer,
+                    { backgroundColor: iconBackgroundColor }
+                ]}>
+                    <Image
+                        source={getTaskIconUrl(item.icon)}
+                        style={styles.taskIcon}
+                        resizeMode="contain"
+                    />
+                </View>
+
+                {/* Task info */}
+                <View style={styles.taskInfo}>
+                    <Text style={styles.taskTitle} numberOfLines={1}>
+                        {item.Title}
+                    </Text>
+                    <Text style={styles.taskCategory}>
+                        {item.category_type} • Today
+                    </Text>
+                </View>
+
+                {/* Points */}
+                <View style={styles.taskPoints}>
+                    <Text style={styles.pointsText}>{item.points || 5}</Text>
+                    <Image
+                        source={require('../../../assets/images/Waterdrop.png')}
+                        style={styles.pointsIcon}
+                    />
+                </View>
+
+                {/* Favorite star */}
+                <TouchableOpacity
+                    style={styles.favoriteButton}
+                    onPress={() => console.log('Toggle favorite')}
+                >
+                    <Text style={styles.favoriteIcon}>
+                        {item.isFavorite ? "★" : "☆"}
+                    </Text>
+                </TouchableOpacity>
+            </Animated.View>
         </View>
     );
 };
@@ -122,11 +187,12 @@ export default function Dashboard() {
         }
     }, [user?.$id, fetchTasks]);
 
-    // Filter tasks based on active tab
-    const currentTasks = tasks.filter((task: Task) => {
+    // Filter tasks for quick view (active tasks only)
+    const quickTasks = tasks.filter((task: Task) => {
+        const status = task.status || "active";
         const categoryType = task.category_type.toLowerCase();
-        return categoryType === activeTab;
-    });
+        return status !== "completed" && status !== "skipped" && categoryType === activeTab;
+    }).slice(0, 3); // Show only first 3 tasks
 
     // Toggle between daily and personal tasks
     const toggleTaskType = () => {
@@ -152,7 +218,10 @@ export default function Dashboard() {
     const handleTaskComplete = async (taskId: string) => {
         try {
             await markCompleted(taskId);
-            // You could add UI feedback here like a toast notification
+            // Refresh tasks after completion
+            if (user?.$id) {
+                await fetchTasks(user.$id);
+            }
         } catch (err) {
             Alert.alert('Error', 'Failed to complete task');
         }
@@ -162,7 +231,10 @@ export default function Dashboard() {
     const handleTaskSkip = async (taskId: string) => {
         try {
             await updateTask(taskId, { status: 'skipped' });
-            // You could add UI feedback here
+            // Refresh tasks after skipping
+            if (user?.$id) {
+                await fetchTasks(user.$id);
+            }
         } catch (err) {
             Alert.alert('Error', 'Failed to skip task');
         }
@@ -188,11 +260,135 @@ export default function Dashboard() {
         }
     };
 
+    // Handle navigation to all tasks
+    const handleViewAllTasksPress = () => {
+        router.push('/(app)/(tabs)/tasks');
+    };
+
     // Interpolate the toggle button position
     const togglePosition = toggleAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ['0%', '50%'],
     });
+
+    // Render quick tasks section
+    const renderQuickTasks = () => {
+        if (loading && tasks.length === 0) {
+            return (
+                <View style={styles.quickTasksContainer}>
+                    <LoadingSpinner message="Loading tasks..." />
+                </View>
+            );
+        }
+
+        if (quickTasks.length === 0) {
+            return (
+                <View style={styles.quickTasksContainer}>
+                    <View style={styles.quickTasksHeader}>
+                        <Text style={styles.quickTasksTitle}>Today&apos;s Tasks</Text>
+                        <TouchableOpacity onPress={handleViewAllTasksPress}>
+                            <Text style={styles.viewAllTasksText}>View All</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.emptyTasksContainer}>
+                        <Text style={styles.emptyTasksText}>No {activeTab} tasks for today</Text>
+                        <TouchableOpacity
+                            style={styles.createTaskButton}
+                            onPress={handleCreateTaskPress}
+                        >
+                            <Text style={styles.createTaskButtonText}>Create Task</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.quickTasksContainer}>
+                {/* Header */}
+                <View style={styles.quickTasksHeader}>
+                    <Text style={styles.quickTasksTitle}>Today&apos;s Tasks</Text>
+                    <TouchableOpacity onPress={handleViewAllTasksPress}>
+                        <Text style={styles.viewAllTasksText}>View All</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Task Toggle */}
+                <View style={styles.dashboardTaskToggle}>
+                    <Animated.View
+                        style={[
+                            styles.dashboardToggleHighlight,
+                            {
+                                left: togglePosition,
+                                backgroundColor: theme.colors.secondary[500],
+                            },
+                        ]}
+                    />
+                    <TouchableOpacity
+                        style={styles.dashboardToggleButton}
+                        onPress={() => activeTab === 'personal' && toggleTaskType()}
+                    >
+                        <Text style={[
+                            styles.dashboardToggleText,
+                            activeTab === 'daily' && styles.activeToggleText
+                        ]}>
+                            Daily
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.dashboardToggleButton}
+                        onPress={() => activeTab === 'daily' && toggleTaskType()}
+                    >
+                        <Text style={[
+                            styles.dashboardToggleText,
+                            activeTab === 'personal' && styles.activeToggleText
+                        ]}>
+                            Personal
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Tasks List */}
+                <Animated.View
+                    style={[
+                        styles.dashboardTasksList,
+                        {
+                            opacity: taskListAnim.interpolate({
+                                inputRange: [0, 0.5, 1],
+                                outputRange: [1, 0, 1],
+                            }),
+                            transform: [
+                                {
+                                    translateX: taskListAnim.interpolate({
+                                        inputRange: [0, 0.5, 1],
+                                        outputRange: [0, -20, 0],
+                                    }),
+                                },
+                            ],
+                        },
+                    ]}
+                >
+                    {quickTasks.map((task) => (
+                        <DashboardTaskItem
+                            key={task.$id}
+                            item={task}
+                            activeTab={activeTab}
+                            onSwipeComplete={handleTaskComplete}
+                            onSwipeSkip={handleTaskSkip}
+                        />
+                    ))}
+                </Animated.View>
+
+                {/* Create Task Button */}
+                <TouchableOpacity
+                    style={styles.addTaskButton}
+                    onPress={handleCreateTaskPress}
+                >
+                    <Text style={styles.addTaskButtonText}>+ Add Task</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
 
     if (loading && tasks.length === 0) {
         return <LoadingSpinner message="Loading your dashboard..." />;
@@ -243,7 +439,10 @@ export default function Dashboard() {
                             style={styles.headerIcon}
                         />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => router.push('/(app)/notifications')}
+                    >
                         <Image
                             source={require('../../../assets/images/bell.png')}
                             style={styles.headerIcon}
@@ -302,107 +501,8 @@ export default function Dashboard() {
             {/* Backdrop Panel */}
             <View style={styles.backdropPanel} />
 
-            {/* Task Header */}
-            <View style={styles.taskHeader}>
-                <TouchableOpacity style={styles.hamburgerButton}>
-                    <Image
-                        source={require('../../../assets/images/Menu-Hamburger.png')}
-                        style={styles.hamburgerIcon}
-                    />
-                </TouchableOpacity>
-                <View style={styles.taskHeaderSpacer} />
-                <TouchableOpacity style={styles.plusButton} onPress={handleCreateTaskPress}>
-                    <Image
-                        source={require('../../../assets/images/Plus.png')}
-                        style={styles.plusIcon}
-                    />
-                </TouchableOpacity>
-            </View>
-
-            {/* Task Toggle */}
-            <View style={styles.taskToggleContainer}>
-                <Animated.View
-                    style={[
-                        styles.toggleHighlight,
-                        {
-                            left: togglePosition,
-                            backgroundColor: theme.colors.secondary[500],
-                        },
-                    ]}
-                />
-                <TouchableOpacity
-                    style={styles.taskToggleButton}
-                    onPress={() => activeTab === 'personal' && toggleTaskType()}
-                >
-                    <Text style={[
-                        styles.taskToggleText,
-                        activeTab === 'daily' && styles.activeTaskText
-                    ]}>
-                        Daily Task
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.taskToggleButton}
-                    onPress={() => activeTab === 'daily' && toggleTaskType()}
-                >
-                    <Text style={[
-                        styles.taskToggleText,
-                        activeTab === 'personal' && styles.activeTaskText
-                    ]}>
-                        Personal Task
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Task List */}
-            <View style={styles.taskContainer}>
-                <Animated.View
-                    style={[
-                        {
-                            opacity: taskListAnim.interpolate({
-                                inputRange: [0, 0.5, 1],
-                                outputRange: [1, 0, 1],
-                            }),
-                            transform: [
-                                {
-                                    translateX: taskListAnim.interpolate({
-                                        inputRange: [0, 0.5, 1],
-                                        outputRange: [0, -50, 0],
-                                    }),
-                                },
-                            ],
-                        },
-                    ]}
-                >
-                    <FlatList
-                        data={currentTasks}
-                        keyExtractor={(item) => item.$id}
-                        contentContainerStyle={styles.taskListContent}
-                        showsVerticalScrollIndicator={false}
-                        renderItem={({ item }) => (
-                            <TaskItem
-                                item={item}
-                                activeTab={activeTab}
-                                onSwipeComplete={handleTaskComplete}
-                                onSwipeSkip={handleTaskSkip}
-                            />
-                        )}
-                        ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <Text style={styles.emptyText}>
-                                    No {activeTab} tasks available
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.createTaskButton}
-                                    onPress={handleCreateTaskPress}
-                                >
-                                    <Text style={styles.createTaskButtonText}>Create Your First Task</Text>
-                                </TouchableOpacity>
-                            </View>
-                        }
-                    />
-                </Animated.View>
-            </View>
+            {/* Quick Tasks Section */}
+            {renderQuickTasks()}
         </View>
     );
 }
@@ -434,7 +534,6 @@ const styles = StyleSheet.create({
         left: "9%",
         resizeMode: "cover",
     },
-
     backdropPanel: {
         position: "absolute",
         bottom: 0,
@@ -443,14 +542,10 @@ const styles = StyleSheet.create({
         backgroundColor: "#DEDED0",
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-
-        // Shadow for iOS
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.4,
         shadowRadius: 3,
-
-        // Shadow for Android
         elevation: 4,
     },
     header: {
@@ -495,8 +590,6 @@ const styles = StyleSheet.create({
         color: "white",
         fontWeight: "bold",
     },
-
-    // Water level bar in the middle of the screen
     waterLevelBarContainer: {
         position: "absolute",
         top: "58.5%",
@@ -581,14 +674,12 @@ const styles = StyleSheet.create({
         height: 14,
         resizeMode: "contain",
     },
-
-    // Special buttons (greenhouse and premium butterfly)
     specialButtonsContainer: {
         position: "absolute",
         flexDirection: "row",
         justifyContent: "space-between",
         width: "100%",
-        top: "51%", // Adjust this value to position them above the backdrop panel
+        top: "51%",
         zIndex: 10,
     },
     specialButton: {
@@ -597,12 +688,10 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         marginHorizontal: 7,
-        // Shadow for iOS
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 3,
-        // Shadow for Android
         elevation: 4,
     },
     specialButtonIcon: {
@@ -610,247 +699,226 @@ const styles = StyleSheet.create({
         height: 35,
     },
 
-    // Task Header with Hamburger and Plus icons
-    taskHeader: {
+    // Quick Tasks Section Styles
+    quickTasksContainer: {
+        position: "absolute",
+        top: "62%",
+        width: "90%",
+        alignSelf: "center",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        borderRadius: 20,
+        padding: 16,
+        zIndex: 15,
+        maxHeight: "30%",
+        ...theme.shadows.lg,
+    },
+    quickTasksHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        position: "absolute",
-        top: "65.4%", // Just above the backdrop panel
-        width: "90%",
-        alignSelf: "center",
-        zIndex: 10,
+        marginBottom: 12,
     },
-    hamburgerButton: {
-        padding: 5,
+    quickTasksTitle: {
+        fontSize: 18,
+        fontWeight: theme.typography.weights.bold,
+        color: theme.colors.primary[900],
+        fontFamily: theme.typography.fonts.primary,
     },
-    hamburgerIcon: {
-        width: 22,
-        height: 22,
+    viewAllTasksText: {
+        fontSize: 14,
+        color: theme.colors.secondary[500],
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.medium,
     },
-    taskHeaderSpacer: {
-        flex: 1,
-    },
-    plusButton: {
-        padding: 5,
-    },
-    plusIcon: {
-        width: 22,
-        height: 22,
-    },
-
-    // Task Toggle Buttons with Animation
-    taskToggleContainer: {
+    dashboardTaskToggle: {
         flexDirection: "row",
-        position: "absolute",
-        top: "65%",
-        width: "48%",
-        alignSelf: "center",
-        backgroundColor: "#78A88A",
-        borderRadius: 12,
-        padding: 4,
-        zIndex: 10,
+        backgroundColor: "#E8E8E8",
+        borderRadius: 15,
+        padding: 2,
+        marginBottom: 16,
+        position: "relative",
         overflow: "hidden",
     },
-    toggleHighlight: {
+    dashboardToggleHighlight: {
         position: "absolute",
-        top: 6,
-        marginLeft: 4,
+        top: 2,
         width: "50%",
-        height: "88%",
-        borderRadius: 8,
+        height: "90%",
+        borderRadius: 13,
+        zIndex: 1,
     },
-    taskToggleButton: {
+    dashboardToggleButton: {
         flex: 1,
         paddingVertical: 8,
         alignItems: "center",
-        zIndex: 1,
+        zIndex: 2,
     },
-    taskToggleText: {
-        fontSize: 10,
-        fontWeight: "bold",
-        color: "#000000",
+    dashboardToggleText: {
+        fontSize: 12,
+        fontWeight: theme.typography.weights.medium,
+        color: theme.colors.text.muted,
+        fontFamily: theme.typography.fonts.primary,
     },
-    activeTaskText: {
-        fontSize: 10,
-        fontWeight: "bold",
+    activeToggleText: {
         color: "#FFFFFF",
+        fontWeight: theme.typography.weights.bold,
     },
-
-    // Task List with Swipe Functionality
-    taskContainer: {
-        position: "absolute",
-        top: "69.7%",
-        width: "75%",
-        height: "21.85%", // Adjusted to fit between toggle and navbar
-        alignSelf: "center",
-        zIndex: 5,
-        overflow: "hidden",
+    dashboardTasksList: {
+        maxHeight: 180,
     },
-    taskItemContainer: {
+    dashboardTaskItem: {
         position: "relative",
-        marginBottom: 14,
-        height: 60,
+        marginBottom: 10,
+        height: 50,
+        borderRadius: 12,
+        overflow: "hidden",
     },
     swipeActionsBackdrop: {
         position: "absolute",
         width: "100%",
         height: "100%",
-        backgroundColor: "#78A88A", // Lighter green color
-        borderRadius: 8,
-        zIndex: 1,
-    },
-    swipeActionsContainer: {
-        position: "absolute",
-        flexDirection: "row",
-        height: "100%",
-        left: 0,
-        width: 120, // This is the SWIPE_ACTION_WIDTH
-        zIndex: 2,
-    },
-    skipButton: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 5,
-    },
-    completeButton: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        marginLeft: 5,
-    },
-    actionButtonBackground: {
-        width: 36,
-        height: 36,
-        backgroundColor: "#78B297", // Both buttons use the same color now
-        borderRadius: 10,
-        justifyContent: "center",
-        alignItems: "center",
-        // Shadow for iOS
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 2,
-        // Shadow for Android
-        elevation: 3,
-    },
-    actionIcon: {
-        width: 26,
-        height: 26,
-        tintColor: "white",
-        resizeMode: "contain",
-    },
-    skipIcon: {
-        width: 30,
-        height: 30,
-        tintColor: "white",
-        resizeMode: "contain",
-    },
-    taskItem: {
-        width: "100%",
-        height: 60,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: 20,
-        backgroundColor: "#68A1A1",
-        borderRadius: 8,
-        zIndex: 2,
-
-        // Shadow for iOS
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 2,
-
-        // Shadow for Android
-        elevation: 4,
-    },
-    taskText: {
-        fontSize: 14,
-        color: "white",
-        fontWeight: "bold",
-    },
-    pointsWrapper: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    taskPoints: {
-        fontSize: 16,
-        fontWeight: "bold",
-        color: "#fff",
-        marginRight: 4,
-    },
-    pointsDropletIcon: {
-        width: 16,
-        height: 16,
-        resizeMode: "contain",
-    },
-
-    // Bottom Navigation
-    navBar: {
-        flexDirection: "row",
-        justifyContent: "space-around",
-        width: "100%",
-        paddingVertical: 15,
-        padding: 10,
-        backgroundColor: "#DEDED0",
-        position: "absolute",
-        bottom: 0,
         borderRadius: 12,
-
-        // Shadow for iOS
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 2,
-
-        // Shadow for Android
-        elevation: 5,
+        justifyContent: "center",
+        alignItems: "flex-end",
+        paddingRight: 15,
     },
-    navButton: {
-        flexDirection: "column",
-        alignItems: "center",
-        paddingHorizontal: 15,
-    },
-    icon: {
-        width: 25,
-        height: 25,
-        marginBottom: 4,
-    },
-    navText: {
-        fontSize: 12,
-        fontWeight: "bold",
-        color: "#164432",
-    },
-    taskTextContainer: {
+    dashboardSwipeActions: {
         flexDirection: "row",
         alignItems: "center",
-        flex: 1,
+        gap: 8,
+    },
+    dashboardActionButton: {
+        width: 35,
+        height: 35,
+        borderRadius: 8,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+    },
+    skipActionButton: {
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+    },
+    completeActionButton: {
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+    },
+    actionButtonText: {
+        fontSize: 12,
+        fontWeight: theme.typography.weights.bold,
+        color: theme.colors.primary[900],
+    },
+    taskContent: {
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: theme.colors.secondary[500],
+        height: "100%",
+        ...theme.shadows.sm,
     },
     taskIconContainer: {
-        width: 36,
-        height: 36,
-        backgroundColor: "#78B297",
-        borderRadius: 9,
+        width: 32,
+        height: 32,
+        borderRadius: 8,
         justifyContent: "center",
         alignItems: "center",
-        marginRight: 10,
-        left: "-2%",
-
-        // Shadow for iOS
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 2,
-
-        // Shadow for Android
-        elevation: 5,
+        marginRight: 12,
     },
     taskIcon: {
-        width: 30,
-        height: 30,
-        resizeMode: "contain",
+        width: 20,
+        height: 20,
     },
-})
+    taskInfo: {
+        flex: 1,
+    },
+    taskTitle: {
+        fontSize: 14,
+        fontWeight: theme.typography.weights.bold,
+        color: "#FFFFFF",
+        fontFamily: theme.typography.fonts.primary,
+        marginBottom: 2,
+    },
+    taskCategory: {
+        fontSize: 11,
+        color: "rgba(255, 255, 255, 0.8)",
+        fontFamily: theme.typography.fonts.primary,
+    },
+    taskPoints: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginRight: 8,
+    },
+    pointsIcon: {
+        width: 12,
+        height: 12,
+        marginLeft: 2,
+    },
+    favoriteButton: {
+        padding: 4,
+    },
+    favoriteIcon: {
+        fontSize: 16,
+        color: "#FFD700",
+    },
+    addTaskButton: {
+        backgroundColor: theme.colors.primary[500],
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        alignItems: "center",
+        alignSelf: "center",
+        marginTop: 8,
+    },
+    addTaskButtonText: {
+        fontSize: 12,
+        fontWeight: theme.typography.weights.medium,
+        color: "#FFFFFF",
+        fontFamily: theme.typography.fonts.primary,
+    },
+    emptyTasksContainer: {
+        alignItems: "center",
+        paddingVertical: 20,
+    },
+    emptyTasksText: {
+        fontSize: 14,
+        color: theme.colors.text.secondary,
+        fontFamily: theme.typography.fonts.primary,
+        marginBottom: 12,
+    },
+    createTaskButton: {
+        backgroundColor: theme.colors.secondary[500],
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: 16,
+    },
+    createTaskButtonText: {
+        fontSize: 12,
+        color: "#FFFFFF",
+        fontWeight: theme.typography.weights.medium,
+        fontFamily: theme.typography.fonts.primary,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#DEDED0",
+    },
+    errorText: {
+        fontSize: 16,
+        color: theme.colors.error,
+        textAlign: "center",
+        marginBottom: 20,
+        fontFamily: theme.typography.fonts.primary,
+    },
+    retryButton: {
+        backgroundColor: theme.colors.secondary[500],
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 20,
+    },
+    retryButtonText: {
+        color: "#FFFFFF",
+        fontSize: 14,
+        fontWeight: theme.typography.weights.medium,
+        fontFamily: theme.typography.fonts.primary,
+    },
+});
