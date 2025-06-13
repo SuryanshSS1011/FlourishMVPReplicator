@@ -50,3 +50,23 @@ export const colors = {
     shadow: 'rgba(0, 0, 0, 0.25)',
 } as const;
 
+// Export in format expected by useThemeColor hook
+export const Colors = {
+    light: {
+        text: colors.text.primary,
+        background: colors.background.primary,
+        tint: colors.primary[700],
+        icon: colors.text.secondary,
+        tabIconDefault: colors.text.muted,
+        tabIconSelected: colors.primary[700],
+    },
+    dark: {
+        text: colors.text.inverse,
+        background: colors.text.primary,
+        tint: colors.primary[500],
+        icon: colors.text.inverse,
+        tabIconDefault: colors.text.muted,
+        tabIconSelected: colors.primary[500],
+    },
+};
+
