@@ -1,4 +1,3 @@
-
 // app/(auth)/register.tsx
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
@@ -9,6 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { authService } from '../../src/lib/appwrite/auth';
 import { theme } from '../../src/styles';
 import { Button } from '../../src/components/ui';
+import { getPreLoginImageSource } from '../../src/lib/utils/imageManager';
 
 export default function RegisterScreen() {
     const handleSignupPress = () => router.push('/(auth)/signup');
@@ -49,7 +49,7 @@ export default function RegisterScreen() {
             <LinearGradient colors={['#AEB1AE', '#4A7B56']} style={styles.gradient}>
                 <Image
                     style={styles.backgroundImage}
-                    source={require('../../assets/images/login-page-1.png')}
+                    source={getPreLoginImageSource('login-page-1')}
                 />
                 <View style={styles.buttonContainer}>
                     <View style={styles.authButtonsContainer}>
@@ -68,13 +68,10 @@ export default function RegisterScreen() {
                             />
                         </View>
                     </View>
-                    <View style={styles.googleButton}>
-                        <Button
-                            title="Login with Google"
-                            onPress={handleGooglePress}
-                            variant="outline"
-                        />
-                    </View>
+
+                    <TouchableOpacity style={styles.googleButton} onPress={handleGooglePress}>
+                        <Text style={styles.googleButtonText}>Continue with Google</Text>
+                    </TouchableOpacity>
                 </View>
             </LinearGradient>
         </View>
@@ -87,28 +84,43 @@ const styles = StyleSheet.create({
     },
     gradient: {
         flex: 1,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 50,
     },
     backgroundImage: {
         position: 'absolute',
         width: '100%',
         height: '100%',
+        resizeMode: 'cover',
     },
     buttonContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        paddingBottom: '15%',
-        paddingHorizontal: theme.spacing.xl,
+        width: '90%',
+        alignItems: 'center',
+        marginBottom: 50,
     },
     authButtonsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: theme.spacing.md,
+        width: '100%',
+        marginBottom: 20,
     },
     authButton: {
         flex: 1,
-        marginHorizontal: theme.spacing.xs,
+        marginHorizontal: 10,
     },
     googleButton: {
+        backgroundColor: theme.colors.background.primary,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 8,
         width: '100%',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    googleButtonText: {
+        color: theme.colors.text.primary,
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
