@@ -13,6 +13,7 @@ import {
 import { router } from 'expo-router';
 import { useSplashImages } from '../../hooks/useSplashImages';
 import { theme } from '../../styles';
+import { getPreLoginImageSource } from '../../lib/utils/imageManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,12 +27,12 @@ const SPLASH_IMAGE_IDS = [
 ];
 
 const FALLBACK_IMAGES = {
-    splash1: require('../../assets/images/splash1.png'),
-    splash2: require('../../assets/images/splash2.png'),
-    splash3: require('../../assets/images/splash3.png'),
-    splash4: require('../../assets/images/splash4.png'),
-    splash5: require('../../assets/images/splash5.png'),
-    splash6: require('../../assets/images/splash6.png'),
+    splash1: getPreLoginImageSource('splash1'),
+    splash2: getPreLoginImageSource('splash2'),
+    splash3: getPreLoginImageSource('splash3'),
+    splash4: getPreLoginImageSource('splash4'),
+    splash5: getPreLoginImageSource('splash5'),
+    splash6: getPreLoginImageSource('splash6'),
 };
 
 interface SplashScreenProps {

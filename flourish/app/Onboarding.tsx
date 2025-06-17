@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../src/styles';
+import { getPreLoginImageSource, getUIImageSource } from '../src/lib/utils/imageManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -77,17 +78,17 @@ export default function Onboarding() {
         {
             title: "Personalized Wellness Journey",
             description: "Select wellness areas to focus on, and Flourish will create a personalized path to help you grow holistically.",
-            imagePath: require('../assets/images/onboarding1.png'),
+            imagePath: getPreLoginImageSource('onboarding1'),
         },
         {
             title: "Plant-Based Progress Tracking",
             description: "Complete wellness tasks to earn Water Droplets, nurturing a virtual plant as you track your progress.",
-            imagePath: require('../assets/images/onboarding2.png'),
+            imagePath: getPreLoginImageSource('onboarding2'),
         },
         {
             title: "Rewards and Customization",
             description: "Use Leaf currency to personalize your plants and create a space that reflects your journey.",
-            imagePath: require('../assets/images/onboarding3.png'),
+            imagePath: getPreLoginImageSource('onboarding3'),
         },
     ];
 
@@ -139,7 +140,7 @@ export default function Onboarding() {
                     </Text>
                     {activeIndex < 2 && (
                         <Image
-                            source={require('../assets/images/arrow-right.png')}
+                            source={getUIImageSource('arrow-right')}
                             style={styles.arrowIcon}
                         />
                     )}
@@ -149,7 +150,7 @@ export default function Onboarding() {
             {activeIndex > 0 && (
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                     <Image
-                        source={require('../assets/images/arrow-left.png')}
+                        source={getUIImageSource('arrow-left')}
                         style={styles.backArrowIcon}
                     />
                 </TouchableOpacity>

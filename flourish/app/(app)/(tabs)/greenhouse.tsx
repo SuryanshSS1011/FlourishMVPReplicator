@@ -20,6 +20,7 @@ import { useAuthStore } from '../../../src/store/authStore';
 import { usePlantsStore } from '../../../src/store/plantsStore';
 import { theme } from '../../../src/styles';
 import { LoadingSpinner } from '../../../src/components/ui';
+import { getGreenhouseImageSource, getUIImageSource, getBackgroundImageSource } from '../../../src/lib/utils/imageManager';
 
 const tabs = ['Plants', 'Accessorize', 'Nutrients'];
 
@@ -149,7 +150,7 @@ export default function GreenhouseScreen() {
                                         </View>
                                         {hasTimer && (
                                             <ImageBackground
-                                                source={require('../../../assets/images/border.png')} // Timer border image placeholder
+                                                source={getGreenhouseImageSource('border')}
                                                 style={styles.timerBadge}
                                                 resizeMode="contain"
                                             >
@@ -174,7 +175,7 @@ export default function GreenhouseScreen() {
                             )}
                         </LinearGradient>
                         <Image
-                            source={require('../../../assets/images/leafgradient.png')} // Premium leaf icon placeholder
+                            source={getBackgroundImageSource('leafgradient')}
                             style={styles.cornerIcon}
                             resizeMode="contain"
                         />
@@ -199,7 +200,7 @@ export default function GreenhouseScreen() {
                             </View>
                             {hasTimer && (
                                 <ImageBackground
-                                    source={require('../../../assets/images/border.png')} // Timer border image placeholder
+                                    source={getGreenhouseImageSource('border')}
                                     style={styles.timerBadge}
                                     resizeMode="contain"
                                 >
@@ -259,14 +260,14 @@ export default function GreenhouseScreen() {
             {/* Plant Display Container */}
             <View style={styles.plantContainer}>
                 <ImageBackground
-                    source={require('../../../assets/images/sand.png')} // Sand background placeholder
+                    source={getGreenhouseImageSource('sand')}
                     style={styles.plantBackground}
                     imageStyle={{ borderRadius: 20 }}
                 >
                     {/* Sun Icon */}
                     <View style={styles.sunContainer}>
                         <Image
-                            source={require('../../../assets/images/sun.png')} // Sun icon placeholder
+                            source={getGreenhouseImageSource('sun')}
                             style={styles.sunIcon}
                         />
                     </View>
@@ -356,7 +357,7 @@ export default function GreenhouseScreen() {
                                     {selectedNutrientImages.map((imageUrl, index) => (
                                         <ImageBackground
                                             key={index}
-                                            source={require('../../../assets/images/border.png')} // Nutrient badge border placeholder
+                                            source={getGreenhouseImageSource('border')}
                                             style={styles.nutrientBadge}
                                             resizeMode="contain"
                                         >
@@ -421,7 +422,7 @@ export default function GreenhouseScreen() {
                             <View style={styles.itemGrid}>
                                 <TouchableOpacity style={styles.itemCard} onPress={handleBackgroundPress}>
                                     <Image
-                                        source={require('../../../assets/images/brick-background.png')} // Background item placeholder
+                                        source={getGreenhouseImageSource('brick-background')}
                                         style={styles.itemImage}
                                     />
                                     <View style={styles.itemLabel}>
@@ -430,7 +431,7 @@ export default function GreenhouseScreen() {
                                 </TouchableOpacity>
                                 <TouchableOpacity style={styles.itemCard} onPress={handleVasesPress}>
                                     <Image
-                                        source={require('../../../assets/images/vase.png')} // Vase item placeholder
+                                        source={getGreenhouseImageSource('vase')}
                                         style={styles.itemImage}
                                     />
                                     <View style={styles.itemLabel}>
@@ -476,7 +477,7 @@ export default function GreenhouseScreen() {
                             />
                             <View style={styles.modalIconWrapper}>
                                 <Image
-                                    source={require('../../../assets/images/Flourish-logo.png')} // Flourish logo placeholder
+                                    source={getGreenhouseImageSource('Flourish-logo')}
                                     style={styles.modalIcon}
                                 />
                             </View>

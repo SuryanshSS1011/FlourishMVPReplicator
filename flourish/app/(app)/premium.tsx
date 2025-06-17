@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { theme } from '../../src/styles';
+import { getPremiumImageSource, getUIImageSource } from '../../src/lib/utils/imageManager';
 
 const { width } = Dimensions.get('window');
 
@@ -69,7 +70,7 @@ export default function PremiumScreen() {
             <View style={styles.headerWrapper}>
                 <View style={styles.headerContainer}>
                     <ImageBackground
-                        source={require('../../assets/images/premium-background.png')} // Premium background placeholder
+                        source={getPremiumImageSource('premium-background')}
                         style={styles.backgroundImage}
                         resizeMode="cover"
                     >
@@ -81,7 +82,7 @@ export default function PremiumScreen() {
                         >
                             <View style={styles.headerContent}>
                                 <Image
-                                    source={require('../../assets/images/leafff.png')} // Leaf icon placeholder
+                                    source={getPremiumImageSource('leafff')}
                                     style={styles.headerImage}
                                     resizeMode="contain"
                                 />
@@ -124,7 +125,7 @@ export default function PremiumScreen() {
                 <View style={styles.welcomeHeaderWrapper}>
                     <View style={styles.welcomeHeaderContainer}>
                         <ImageBackground
-                            source={require('../../assets/images/premium-background.png')} // Premium background placeholder
+                            source={getPremiumImageSource('premium-background')}
                             style={styles.welcomeBackgroundImage}
                             resizeMode="cover"
                         >
@@ -136,7 +137,7 @@ export default function PremiumScreen() {
                             >
                                 <View style={styles.welcomeContainer}>
                                     <Image
-                                        source={require('../../assets/images/welcome-plant.png')} // Welcome plant placeholder
+                                        source={getPremiumImageSource('welcome-plant')}
                                         style={styles.plantImage}
                                         resizeMode="contain"
                                     />

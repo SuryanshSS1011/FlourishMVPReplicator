@@ -22,6 +22,7 @@ import { useTasksStore } from "../../../src/store/tasksStore";
 import { theme } from "../../../src/styles";
 import { LoadingSpinner } from "../../../src/components/ui";
 import type { Task, NavigationProps } from "../../../src/types";
+import { getTaskIconSource, getUIImageSource } from "../../../src/lib/utils/imageManager";
 
 const { width, height } = Dimensions.get("window");
 
@@ -138,7 +139,7 @@ export default function TasksScreen() {
                         accessibilityRole="button"
                     >
                         <Image
-                            source={require("../../../assets/images/bag.png")}
+                            source={getTaskIconSource('bag')}
                             style={styles.actionIcon}
                         />
                     </TouchableOpacity>
@@ -211,7 +212,7 @@ export default function TasksScreen() {
                         const taskBackgroundColor = section.title === "Daily Tasks" ? "#68A1A1" : "#78A88A";
                         const iconSource = item.icon && typeof item.icon === 'string' && item.icon.trim() !== ''
                             ? { uri: getTaskIconUrl(item.icon) }
-                            : require("../../../assets/images/Waterdrop.png");
+                            : getUIImageSource('Waterdrop');
 
                         return (
                             <Swipeable
@@ -236,7 +237,7 @@ export default function TasksScreen() {
                                                 source={iconSource}
                                                 style={styles.taskIcon}
                                                 resizeMode="contain"
-                                                defaultSource={require("../../../assets/images/Waterdrop.png")}
+                                                defaultSource={getUIImageSource('Waterdrop')}
                                             />
                                         </View>
                                         <View style={styles.taskTextContainer}>
@@ -248,7 +249,7 @@ export default function TasksScreen() {
                                             {item.points || 5}
                                         </Text>
                                         <Image
-                                            source={require("../../../assets/images/Waterdrop.png")}
+                                            source={getUIImageSource('Waterdrop')}
                                             style={[styles.drop, { marginLeft: (5 / FIGMA_WIDTH) * width }]}
                                         />
                                         <TouchableOpacity
@@ -291,7 +292,7 @@ export default function TasksScreen() {
                     const taskBackgroundColor = item.category_type?.toLowerCase().trim() === "daily" ? "#68A1A1" : "#78A88A";
                     const iconSource = item.icon && typeof item.icon === 'string' && item.icon.trim() !== ''
                         ? { uri: getTaskIconUrl(item.icon) }
-                        : require("../../../assets/images/Waterdrop.png");
+                        : getUIImageSource('Waterdrop');
 
                     return (
                         <Swipeable
@@ -316,7 +317,7 @@ export default function TasksScreen() {
                                             source={iconSource}
                                             style={styles.taskIcon}
                                             resizeMode="contain"
-                                            defaultSource={require("../../../assets/images/Waterdrop.png")}
+                                            defaultSource={getUIImageSource('Waterdrop')}
                                         />
                                     </View>
                                     <View style={styles.taskTextContainer}>
@@ -328,7 +329,7 @@ export default function TasksScreen() {
                                         {item.points || 5}
                                     </Text>
                                     <Image
-                                        source={require("../../../assets/images/Waterdrop.png")}
+                                        source={getUIImageSource('Waterdrop')}
                                         style={[styles.drop, { marginLeft: (5 / FIGMA_WIDTH) * width }]}
                                     />
                                     <TouchableOpacity
@@ -400,7 +401,7 @@ export default function TasksScreen() {
                         accessibilityLabel="Go back to previous screen"
                         accessibilityRole="button"
                     >
-                        <Image source={require("../../../assets/images/back-button.png")} style={styles.arrow} />
+                        <Image source={getUIImageSource('back-button')} style={styles.arrow} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.search}
@@ -408,7 +409,7 @@ export default function TasksScreen() {
                         accessibilityLabel="Search tasks"
                         accessibilityRole="button"
                     >
-                        <Image source={require("../../../assets/images/MagnifyingGlass.png")} />
+                        <Image source={getUIImageSource('MagnifyingGlass')} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.plus}
@@ -420,7 +421,7 @@ export default function TasksScreen() {
                         accessibilityLabel="Create new task"
                         accessibilityRole="button"
                     >
-                        <Image source={require("../../../assets/images/Plus.png")} />
+                        <Image source={getUIImageSource('Plus')} />
                     </TouchableOpacity>
                 </View>
 

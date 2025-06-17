@@ -18,6 +18,7 @@ import { useTasksStore } from '../../../src/store/tasksStore';
 import { theme } from '../../../src/styles';
 import { LoadingSpinner } from '../../../src/components/ui';
 import type { Task } from '../../../src/types';
+import { getUIImageSource, getDashboardImageSource } from '../../../src/lib/utils/imageManager';
 
 // Separate TaskItem component for dashboard quick tasks
 const DashboardTaskItem = ({
@@ -88,7 +89,7 @@ const DashboardTaskItem = ({
 
     const getTaskIconUrl = (fileId: string | null) => {
         if (!fileId || fileId.trim() === "") {
-            return require("../../../assets/images/Waterdrop.png");
+            return getUIImageSource('Waterdrop');
         }
         return { uri: `https://cloud.appwrite.io/v1/storage/buckets/67e227bf00075deadffc/files/${fileId}/view?project=67cfa24f0031e006fba3` };
     };
@@ -151,7 +152,7 @@ const DashboardTaskItem = ({
                 <View style={styles.taskPoints}>
                     <Text style={styles.pointsText}>{item.points || 5}</Text>
                     <Image
-                        source={require('../../../assets/images/Waterdrop.png')}
+                        source={getUIImageSource('Waterdrop')}
                         style={styles.pointsIcon}
                     />
                 </View>
@@ -412,15 +413,15 @@ export default function Dashboard() {
         <View style={styles.container}>
             {/* Background Images */}
             <ImageBackground
-                source={require('../../../assets/images/sunshine.png')}
+                source={getDashboardImageSource('sunshine')}
                 style={styles.background}
             />
             <ImageBackground
-                source={require('../../../assets/images/base.png')}
+                source={getDashboardImageSource('base')}
                 style={styles.table}
             />
             <ImageBackground
-                source={require('../../../assets/images/flower.png')}
+                source={getDashboardImageSource('flower')}
                 style={styles.plant}
             />
 
@@ -428,14 +429,14 @@ export default function Dashboard() {
             <View style={styles.header}>
                 <TouchableOpacity style={styles.profileButton}>
                     <Image
-                        source={require('../../../assets/images/profile-picture.png')}
+                        source={getDashboardImageSource('profile-picture')}
                         style={styles.profileIcon}
                     />
                 </TouchableOpacity>
                 <View style={styles.rightIcons}>
                     <TouchableOpacity style={styles.iconButton}>
                         <Image
-                            source={require('../../../assets/images/gift.png')}
+                            source={getDashboardImageSource('gift')}
                             style={styles.headerIcon}
                         />
                     </TouchableOpacity>
@@ -444,7 +445,7 @@ export default function Dashboard() {
                         onPress={() => router.push('/(app)/notifications')}
                     >
                         <Image
-                            source={require('../../../assets/images/bell.png')}
+                            source={getDashboardImageSource('bell')}
                             style={styles.headerIcon}
                         />
                         <View style={styles.notificationBadge}>
@@ -464,7 +465,7 @@ export default function Dashboard() {
                         <View style={[styles.waterFill, { width: `${waterPercentage}%` }]} />
                         <View style={styles.waterBarContent}>
                             <Image
-                                source={require('../../../assets/images/Waterdrop.png')}
+                                source={getUIImageSource('Waterdrop')}
                                 style={styles.waterBarIcon}
                             />
                             <View style={styles.waterPercentageContainer}>
@@ -476,7 +477,7 @@ export default function Dashboard() {
                 <View style={styles.pointsContainer}>
                     <Text style={styles.pointsText}>50</Text>
                     <Image
-                        source={require('../../../assets/images/Waterdrop.png')}
+                        source={getUIImageSource('Waterdrop')}
                         style={styles.dropletIcon}
                     />
                 </View>
@@ -486,13 +487,13 @@ export default function Dashboard() {
             <View style={styles.specialButtonsContainer}>
                 <TouchableOpacity style={styles.specialButton} onPress={handleGreenhousePress}>
                     <Image
-                        source={require('../../../assets/images/home2.png')}
+                        source={getUIImageSource('home2')}
                         style={styles.specialButtonIcon}
                     />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.specialButton} onPress={handlePremiumPress}>
                     <Image
-                        source={require('../../../assets/images/premium.png')}
+                        source={getUIImageSource('premium')}
                         style={styles.specialButtonIcon}
                     />
                 </TouchableOpacity>

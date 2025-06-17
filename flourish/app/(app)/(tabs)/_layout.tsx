@@ -2,6 +2,7 @@
 import { Tabs } from 'expo-router';
 import { Image } from 'react-native';
 import { theme } from '../../../src/styles';
+import { getUIImageSource } from '../../../src/lib/utils/imageManager';
 
 export default function TabLayout() {
   return (
@@ -30,7 +31,7 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../../assets/images/home-icon.png')}
+              source={getUIImageSource('home-icon')}
               style={{
                 width: 25,
                 height: 25,
@@ -46,7 +47,7 @@ export default function TabLayout() {
           title: 'Greenhouse',
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../../assets/images/home2.png')}
+              source={getUIImageSource('home2')}
               style={{
                 width: 25,
                 height: 25,
@@ -62,7 +63,7 @@ export default function TabLayout() {
           title: 'Garden',
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../../assets/images/garden.png')}
+              source={getUIImageSource('garden')}
               style={{
                 width: 25,
                 height: 25,
@@ -78,7 +79,7 @@ export default function TabLayout() {
           title: 'Shop',
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../../assets/images/shop.png')}
+              source={getUIImageSource('shop')}
               style={{
                 width: 25,
                 height: 25,
@@ -94,7 +95,7 @@ export default function TabLayout() {
           title: 'Encyclopedia',
           tabBarIcon: ({ focused }) => (
             <Image
-              source={require('../../../assets/images/encyclopedia.png')}
+              source={getUIImageSource('encyclopedia')}
               style={{
                 width: 25,
                 height: 25,

@@ -15,48 +15,46 @@ import {
     Alert,
 } from "react-native";
 import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Asset } from 'expo-asset';
-import * as FileSystem from 'expo-file-system';
 import { router } from 'expo-router';
 import { useAuthStore } from "../../../src/store/authStore";
 import { useTasksStore } from "../../../src/store/tasksStore";
-import { taskService } from "../../../src/lib/appwrite";
 import { theme } from "../../../src/styles";
 import { LoadingSpinner } from "../../../src/components/ui";
-import type { NavigationProps, Suggestion, TaskFormData } from "../../../src/types";
+import type { Suggestion } from "../../../src/types";
+import { getTaskIconSource, getUIImageSource } from "../../../src/lib/utils/imageManager";
 
-// Asset mapping for icons
+// Asset mapping for icons using imageManager
 const assetMap: Record<string, any> = {
-    '24 hours': require("../../../assets/images/24 hours.png"),
-    'bag': require("../../../assets/images/bag.png"),
-    'bellring': require("../../../assets/images/bellring.png"),
-    'burger': require("../../../assets/images/burger.png"),
-    'call': require("../../../assets/images/call.png"),
-    'car': require("../../../assets/images/car.png"),
-    'cheers': require("../../../assets/images/cheers.png"),
-    'chef': require("../../../assets/images/chef.png"),
-    'cart': require("../../../assets/images/cart.png"),
-    'computer': require("../../../assets/images/computer.png"),
-    'cycle': require("../../../assets/images/cycle.png"),
-    'doctor': require("../../../assets/images/doctor.png"),
-    'email': require("../../../assets/images/email.png"),
-    'food': require("../../../assets/images/food.png"),
-    'game': require("../../../assets/images/game.png"),
-    'grad': require("../../../assets/images/grad.png"),
-    'guitar': require("../../../assets/images/guitar.png"),
-    'gym': require("../../../assets/images/gym.png"),
-    'heart': require("../../../assets/images/heart.png"),
-    'home': require("../../../assets/images/home.png"),
-    'paint': require("../../../assets/images/paint.png"),
-    'pet': require("../../../assets/images/pet.png"),
-    'pizza': require("../../../assets/images/pizza.png"),
-    'profile': require("../../../assets/images/profile.png"),
-    'ringbell': require("../../../assets/images/ringbell.png"),
-    'shopping': require("../../../assets/images/shopping.png"),
-    'video': require("../../../assets/images/video.png"),
-    'tea': require("../../../assets/images/tea.png"),
+    '24 hours': getTaskIconSource('24 hours'),
+    'bag': getTaskIconSource('bag'),
+    'bellring': getTaskIconSource('bellring'),
+    'burger': getTaskIconSource('burger'),
+    'call': getTaskIconSource('call'),
+    'car': getTaskIconSource('car'),
+    'cheers': getTaskIconSource('cheers'),
+    'chef': getTaskIconSource('chef'),
+    'cart': getTaskIconSource('cart'),
+    'computer': getTaskIconSource('computer'),
+    'cycle': getTaskIconSource('cycle'),
+    'doctor': getTaskIconSource('doctor'),
+    'email': getTaskIconSource('email'),
+    'food': getTaskIconSource('food'),
+    'game': getTaskIconSource('game'),
+    'grad': getTaskIconSource('grad'),
+    'guitar': getTaskIconSource('guitar'),
+    'gym': getTaskIconSource('gym'),
+    'heart': getTaskIconSource('heart'),
+    'home': getTaskIconSource('home'),
+    'paint': getTaskIconSource('paint'),
+    'pet': getTaskIconSource('pet'),
+    'pizza': getTaskIconSource('pizza'),
+    'profile': getTaskIconSource('profile'),
+    'ringbell': getTaskIconSource('ringbell'),
+    'shopping': getTaskIconSource('shopping'),
+    'video': getTaskIconSource('video'),
+    'tea': getTaskIconSource('tea'),
 };
 
 type IconName =
@@ -172,7 +170,7 @@ interface IconItem {
 }
 
 export default function TaskFormScreen() {
-    const navigation = useNavigation<NavigationProps>();
+    const navigation = useNavigation();
     const { user } = useAuthStore();
     const { suggestions, fetchSuggestions, createTask } = useTasksStore();
 
@@ -366,7 +364,7 @@ export default function TaskFormScreen() {
     const renderSuggestion = ({ item }: { item: Suggestion }) => {
         const iconSource = item.icon && typeof item.icon === 'string' && item.icon.trim() !== ''
             ? { uri: `https://cloud.appwrite.io/v1/storage/buckets/67e227bf00075deadffc/files/${item.icon}/view?project=67cfa24f0031e006fba3` }
-            : require("../../../assets/images/Waterdrop.png");
+            : getUIImageSource('Waterdrop');
 
         return (
             <Swipeable renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item.$id, true)}>
@@ -389,7 +387,7 @@ export default function TaskFormScreen() {
                         </View>
                         <Text style={styles.taskText}>{item.title}</Text>
                         <Text style={styles.points}>{item.points || 5}</Text>
-                        <Image source={require("../../../assets/images/Waterdrop.png")} style={styles.drop} />
+                        <Image source={getUIImageSource('Waterdrop')} style={styles.drop} />
                     </TouchableOpacity>
                 </View>
             </Swipeable>
@@ -456,7 +454,7 @@ export default function TaskFormScreen() {
                     <View style={styles.largeblock}>
                         {/* All Day Toggle */}
                         <View style={styles.allDayContainer}>
-                            <Image source={require("../../../assets/images/Clock.png")} style={styles.clock} />
+                            <Image source={getUIImageSource('Clock')} style={styles.clock} />
                             <Text style={styles.day}>All-day</Text>
                             <Switch
                                 trackColor={{ false: theme.colors.primary[900], true: theme.colors.primary[900] }}
@@ -470,16 +468,16 @@ export default function TaskFormScreen() {
 
                         {/* Date Picker */}
                         <TouchableOpacity style={styles.dateContainer} onPress={() => setShowDatePicker(true)}>
-                            <Image source={require("../../../assets/images/calendar_month.png")} style={styles.calendar} />
+                            <Image source={getUIImageSource('calendar_month')} style={styles.calendar} />
                             <Text style={styles.date}>{formatDate(currentForm.selectedDate)}</Text>
-                            <Image source={require("../../../assets/images/Down arrow.png")} style={styles.downarrow} />
+                            <Image source={getUIImageSource('Down arrow')} style={styles.downarrow} />
                         </TouchableOpacity>
 
                         {/* Repeat Option */}
                         <TouchableOpacity style={styles.repeatContainer} onPress={() => setShowRepeatDropdown(true)}>
-                            <Image source={require("../../../assets/images/Repeat.png")} style={styles.loop} />
+                            <Image source={getUIImageSource('Repeat')} style={styles.loop} />
                             <Text style={styles.repeat}>{currentForm.repeatOption}</Text>
-                            <Image source={require("../../../assets/images/Down arrow.png")} style={styles.downarrow2} />
+                            <Image source={getUIImageSource('Down arrow')} style={styles.downarrow2} />
                         </TouchableOpacity>
 
                         {/* Icon Selection */}
@@ -488,7 +486,7 @@ export default function TaskFormScreen() {
                                 source={
                                     selectedIcon
                                         ? iconImages[selectedIcon].imageSource
-                                        : require("../../../assets/images/Waterdrop.png")
+                                        : getUIImageSource('Waterdrop')
                                 }
                                 style={styles.selectedIcon}
                                 resizeMode="contain"
@@ -496,7 +494,7 @@ export default function TaskFormScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.iconplus} onPress={openIconPicker} disabled={loading}>
-                            <Image source={require("../../../assets/images/wplus.png")} style={[styles.plus, loading && styles.disabledImage]} />
+                            <Image source={getUIImageSource('wplus')} style={[styles.plus, loading && styles.disabledImage]} />
                         </TouchableOpacity>
 
                         {/* Title Input */}
@@ -533,7 +531,7 @@ export default function TaskFormScreen() {
 
                     {/* Search Button */}
                     <TouchableOpacity style={styles.mglass} onPress={() => console.log("Search pressed")}>
-                        <Image source={require("../../../assets/images/MagnifyingGlass.png")} style={styles.glassicon} />
+                        <Image source={getUIImageSource('MagnifyingGlass')} style={styles.glassicon} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -756,5 +754,357 @@ const styles = StyleSheet.create({
         height: (12 / FIGMA_HEIGHT) * height,
         marginLeft: (10 / FIGMA_WIDTH) * width,
     },
-    // Add other missing styles here as needed
+    repeatContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        position: "absolute",
+        top: (362 / FIGMA_HEIGHT) * height,
+        left: (31 / FIGMA_WIDTH) * width,
+    },
+    loop: {
+        resizeMode: "contain",
+        width: (25.07 / FIGMA_WIDTH) * width,
+        height: (25.07 / FIGMA_HEIGHT) * height,
+    },
+    repeat: {
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.medium,
+        fontSize: 14,
+        color: theme.colors.primary[900],
+        marginLeft: (10 / FIGMA_WIDTH) * width,
+    },
+    downarrow2: {
+        resizeMode: "contain",
+        width: (12 / FIGMA_WIDTH) * width,
+        height: (12 / FIGMA_HEIGHT) * height,
+        marginLeft: (10 / FIGMA_WIDTH) * width,
+    },
+    iconchange: {
+        position: "absolute",
+        top: (62 / FIGMA_HEIGHT) * height,
+        left: (161 / FIGMA_WIDTH) * width,
+        width: (32 / FIGMA_WIDTH) * width,
+        height: (32 / FIGMA_HEIGHT) * height,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.primary[300],
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#FFFFFF",
+    },
+    selectedIcon: {
+        width: (24 / FIGMA_WIDTH) * width,
+        height: (24 / FIGMA_HEIGHT) * height,
+    },
+    iconplus: {
+        position: "absolute",
+        top: (102 / FIGMA_HEIGHT) * height,
+        left: (161 / FIGMA_WIDTH) * width,
+        width: (32 / FIGMA_WIDTH) * width,
+        height: (32 / FIGMA_HEIGHT) * height,
+        borderRadius: 8,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#78A88A",
+    },
+    plus: {
+        width: (16 / FIGMA_WIDTH) * width,
+        height: (16 / FIGMA_HEIGHT) * height,
+        resizeMode: "contain",
+    },
+    disabledImage: {
+        opacity: 0.6,
+    },
+    titlespace: {
+        position: "absolute",
+        top: (162 / FIGMA_HEIGHT) * height,
+        left: (31 / FIGMA_WIDTH) * width,
+        width: (292 / FIGMA_WIDTH) * width,
+        height: (60 / FIGMA_HEIGHT) * height,
+    },
+    titleInput: {
+        flex: 1,
+        fontSize: 20,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.black,
+        color: theme.colors.primary[900],
+        paddingHorizontal: 0,
+    },
+    placeholderOverlay: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: "center",
+    },
+    titlePlaceholder: {
+        fontSize: 20,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.black,
+        color: theme.colors.primary[500],
+    },
+    suggestionblock: {
+        position: "absolute",
+        top: (495 / FIGMA_HEIGHT) * height,
+        left: 0,
+        width: (354 / FIGMA_WIDTH) * width,
+        height: (250 / FIGMA_HEIGHT) * height,
+        backgroundColor: theme.colors.primary[100],
+        borderRadius: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 4,
+        paddingTop: 20,
+        paddingHorizontal: 20,
+    },
+    sectionHeader: {
+        fontSize: 18,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.bold,
+        color: theme.colors.primary[900],
+        marginBottom: 15,
+    },
+    suggestionScrollContent: {
+        paddingBottom: 20,
+    },
+    emptyText: {
+        fontSize: 14,
+        fontFamily: theme.typography.fonts.primary,
+        color: theme.colors.primary[700],
+        textAlign: "center",
+        marginTop: 20,
+    },
+    mglass: {
+        position: "absolute",
+        top: (765 / FIGMA_HEIGHT) * height,
+        left: (161 / FIGMA_WIDTH) * width,
+        width: (32 / FIGMA_WIDTH) * width,
+        height: (32 / FIGMA_HEIGHT) * height,
+        borderRadius: 16,
+        backgroundColor: "#78A88A",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    glassicon: {
+        width: (20 / FIGMA_WIDTH) * width,
+        height: (20 / FIGMA_HEIGHT) * height,
+        resizeMode: "contain",
+    },
+    taskWrapper: {
+        marginBottom: 10,
+    },
+    taskbutton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    taskbuttonPersonal: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    taskIconContainer: {
+        width: (32 / FIGMA_WIDTH) * width,
+        height: (32 / FIGMA_HEIGHT) * height,
+        borderRadius: 8,
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 12,
+    },
+    taskIconContainerDaily: {
+        borderWidth: 1,
+        borderColor: "#B3CCA4",
+    },
+    taskIconContainerPersonal: {
+        borderWidth: 1,
+        borderColor: "#68A1A1",
+    },
+    taskIcon: {
+        width: (24 / FIGMA_WIDTH) * width,
+        height: (24 / FIGMA_HEIGHT) * height,
+    },
+    taskText: {
+        flex: 1,
+        fontSize: 16,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.medium,
+        color: theme.colors.primary[900],
+    },
+    points: {
+        fontSize: 14,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.bold,
+        color: "#78A88A",
+        marginRight: 8,
+    },
+    drop: {
+        width: (16 / FIGMA_WIDTH) * width,
+        height: (16 / FIGMA_HEIGHT) * height,
+        resizeMode: "contain",
+    },
+    leftActionsContainer: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingLeft: 20,
+    },
+    leftActionsContainerDaily: {
+        backgroundColor: "#B3CCA4",
+    },
+    leftActionsContainerPersonal: {
+        backgroundColor: "#68A1A1",
+    },
+    leftActions: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    skipButton: {
+        backgroundColor: "#FF6B6B",
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 6,
+        marginRight: 10,
+    },
+    completeButton: {
+        backgroundColor: "#4ECDC4",
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 6,
+    },
+    actionText: {
+        color: "#FFFFFF",
+        fontSize: 14,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.medium,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    datePickerContainer: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 12,
+        padding: 20,
+        margin: 20,
+    },
+    datePicker: {
+        width: 300,
+        height: 200,
+    },
+    closeButton: {
+        marginTop: 15,
+        alignSelf: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        backgroundColor: "#78A88A",
+        borderRadius: 8,
+    },
+    closeButtonText: {
+        color: "#FFFFFF",
+        fontSize: 16,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.medium,
+    },
+    repeatDropdown: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 12,
+        padding: 20,
+        margin: 20,
+        minWidth: 200,
+    },
+    repeatOption: {
+        paddingVertical: 12,
+        paddingHorizontal: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.primary[300],
+    },
+    repeatOptionText: {
+        fontSize: 16,
+        fontFamily: theme.typography.fonts.primary,
+        color: theme.colors.primary[900],
+    },
+    iconPickerModalContainer: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "flex-end",
+    },
+    iconPickerModalContent: {
+        backgroundColor: "#FFFFFF",
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        maxHeight: height * 0.7,
+    },
+    iconPickerTitle: {
+        fontSize: 20,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.bold,
+        color: theme.colors.primary[900],
+        textAlign: "center",
+        marginBottom: 20,
+    },
+    iconPickerList: {
+        paddingBottom: 20,
+    },
+    iconPickerItem: {
+        flex: 1,
+        margin: 10,
+        aspectRatio: 1,
+    },
+    iconPickerWrapper: {
+        flex: 1,
+        backgroundColor: theme.colors.primary[100],
+        borderRadius: 12,
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 15,
+    },
+    iconPickerImage: {
+        width: "80%",
+        height: "80%",
+    },
+    iconPickerCloseButton: {
+        backgroundColor: theme.colors.primary[700],
+        paddingVertical: 15,
+        borderRadius: 10,
+        alignItems: "center",
+        marginTop: 10,
+    },
+    iconPickerCloseButtonText: {
+        color: "#FFFFFF",
+        fontSize: 16,
+        fontFamily: theme.typography.fonts.primary,
+        fontWeight: theme.typography.weights.medium,
+    },
+    loadingOverlay: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
 });

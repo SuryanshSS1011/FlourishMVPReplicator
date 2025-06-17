@@ -14,19 +14,20 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../../src/styles';
+import { getBackgroundImageSource } from '../../../src/lib/utils/imageManager';
 
 // Mock background data - replace with actual data from your backend
 const backgrounds = [
-    { id: '1', name: 'Brick Wall', image: 'brick-background.png', isPremium: false },
-    { id: '2', name: 'Forest', image: 'forest-background.png', isPremium: false },
-    { id: '3', name: 'Marble', image: 'marble-background.png', isPremium: true },
-    { id: '4', name: 'Sky', image: 'sky-background.png', isPremium: false },
-    { id: '5', name: 'Stone', image: 'stone-background.png', isPremium: false },
-    { id: '6', name: 'Wood', image: 'wood-background.png', isPremium: false },
-    { id: '7', name: 'Galaxy', image: 'galaxy-background.png', isPremium: true },
-    { id: '8', name: 'Desert', image: 'desert-background.png', isPremium: false },
-    { id: '9', name: 'Ocean', image: 'ocean-background.png', isPremium: true },
-    { id: '10', name: 'Mountain', image: 'mountain-background.png', isPremium: false },
+    { id: '1', name: 'Brick Wall', image: 'brick-background', isPremium: false },
+    { id: '2', name: 'Forest', image: 'forest-background', isPremium: false },
+    { id: '3', name: 'Marble', image: 'marble-background', isPremium: true },
+    { id: '4', name: 'Sky', image: 'sky-background', isPremium: false },
+    { id: '5', name: 'Stone', image: 'stone-background', isPremium: false },
+    { id: '6', name: 'Wood', image: 'wood-background', isPremium: false },
+    { id: '7', name: 'Galaxy', image: 'galaxy-background', isPremium: true },
+    { id: '8', name: 'Desert', image: 'desert-background', isPremium: false },
+    { id: '9', name: 'Ocean', image: 'ocean-background', isPremium: true },
+    { id: '10', name: 'Mountain', image: 'mountain-background', isPremium: false },
 ];
 
 export default function BackgroundsScreen() {
@@ -82,14 +83,14 @@ export default function BackgroundsScreen() {
 
             <View style={styles.backgroundImageContainer}>
                 <Image
-                    source={require(`../../../assets/images/${background.image}`)} // Background image placeholder
+                    source={getBackgroundImageSource(background.image)}
                     style={styles.backgroundImage}
                     resizeMode="cover"
                 />
                 {background.isPremium && (
                     <View style={styles.premiumBadge}>
                         <Image
-                            source={require('../../../assets/images/leafgradient.png')} // Premium leaf icon placeholder
+                            source={getBackgroundImageSource('leafgradient')}
                             style={styles.premiumIcon}
                         />
                     </View>
@@ -142,7 +143,7 @@ export default function BackgroundsScreen() {
                 <View style={styles.modalOverlay}>
                     <View style={styles.previewContainer}>
                         <Image
-                            source={previewBackground ? require(`../../../assets/images/${previewBackground.image}`) : undefined}
+                            source={previewBackground ? getBackgroundImageSource(previewBackground.image) : undefined}
                             style={styles.previewImage}
                             resizeMode="cover"
                         />

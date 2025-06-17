@@ -75,6 +75,16 @@ export const IMAGE_MAPPINGS = {
     // Background images
     backgrounds: {
         'leafgradient': { fileId: 'leafgradient', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'brick-background': { fileId: 'brick-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'forest-background': { fileId: 'forest-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'marble-background': { fileId: 'marble-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'sky-background': { fileId: 'sky-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'stone-background': { fileId: 'stone-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'wood-background': { fileId: 'wood-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'galaxy-background': { fileId: 'galaxy-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'desert-background': { fileId: 'desert-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'ocean-background': { fileId: 'ocean-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'mountain-background': { fileId: 'mountain-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
     },
 
     // Plant images
@@ -85,6 +95,45 @@ export const IMAGE_MAPPINGS = {
     // Nutrient images
     nutrients: {
         'default-nutrient': { fileId: 'default-nutrient', bucket: APPWRITE_CONFIG.buckets.nutrientImages },
+    },
+
+    // UI elements (arrows, buttons, icons)
+    ui: {
+        'Waterdrop': { fileId: 'waterdrop', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'Clock': { fileId: 'clock', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'calendar_month': { fileId: 'calendar-month', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'Down arrow': { fileId: 'down-arrow', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'Repeat': { fileId: 'repeat', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'wplus': { fileId: 'wplus', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'MagnifyingGlass': { fileId: 'magnifying-glass', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'Plus': { fileId: 'plus', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'back-button': { fileId: 'back-button', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'arrow-right': { fileId: 'arrow-right', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'arrow-left': { fileId: 'arrow-left', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'home2': { fileId: 'home2', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'premium': { fileId: 'premium', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        // Tab bar icons
+        'home-icon': { fileId: 'home-icon', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'garden': { fileId: 'garden', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'shop': { fileId: 'shop', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'encyclopedia': { fileId: 'encyclopedia', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+    },
+
+    // Greenhouse specific elements
+    greenhouse: {
+        'border': { fileId: 'border', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'sand': { fileId: 'sand', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'sun': { fileId: 'sun', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'brick-background': { fileId: 'brick-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'vase': { fileId: 'vase', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'Flourish-logo': { fileId: 'flourish-logo', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+    },
+
+    // Premium feature images
+    premium: {
+        'premium-background': { fileId: 'premium-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
+        'leafff': { fileId: 'leafff', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
+        'welcome-plant': { fileId: 'welcome-plant', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
     },
 } as const;
 
@@ -177,3 +226,11 @@ export const getPreLoginImage = (imageName: string) => imageManager.getImageUrl(
 export const getPreLoginImageSource = (imageName: string) => imageManager.getImageSource('preLogin', imageName);
 export const getDashboardImage = (imageName: string) => imageManager.getImageUrl('dashboard', imageName);
 export const getDashboardImageSource = (imageName: string) => imageManager.getImageSource('dashboard', imageName);
+export const getUIImage = (imageName: string) => imageManager.getImageUrl('ui', imageName);
+export const getUIImageSource = (imageName: string) => imageManager.getImageSource('ui', imageName);
+export const getGreenhouseImage = (imageName: string) => imageManager.getImageUrl('greenhouse', imageName);
+export const getGreenhouseImageSource = (imageName: string) => imageManager.getImageSource('greenhouse', imageName);
+export const getPremiumImage = (imageName: string) => imageManager.getImageUrl('premium', imageName);
+export const getPremiumImageSource = (imageName: string) => imageManager.getImageSource('premium', imageName);
+export const getBackgroundImage = (imageName: string) => imageManager.getImageUrl('backgrounds', imageName);
+export const getBackgroundImageSource = (imageName: string) => imageManager.getImageSource('backgrounds', imageName);
