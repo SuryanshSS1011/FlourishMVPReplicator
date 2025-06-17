@@ -48,14 +48,14 @@ export const IMAGE_MAPPINGS = {
         'burger': { fileId: 'burger', bucket: APPWRITE_CONFIG.buckets.taskImages },
         'call': { fileId: 'call', bucket: APPWRITE_CONFIG.buckets.taskImages },
         'car': { fileId: 'car', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'cheers': { fileId: 'cheers', bucket: APPWRITE_CONFIG.buckets.taskImages },
+        'cheers': { fileId: 'cheers', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
         'chef': { fileId: 'chef', bucket: APPWRITE_CONFIG.buckets.taskImages },
         'cart': { fileId: 'cart', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'computer': { fileId: 'computer', bucket: APPWRITE_CONFIG.buckets.taskImages },
+        'computer': { fileId: 'computer', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
         'cycle': { fileId: 'cycle', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'doctor': { fileId: 'doctor', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'email': { fileId: 'email', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'food': { fileId: 'food', bucket: APPWRITE_CONFIG.buckets.taskImages },
+        'doctor': { fileId: 'doctor', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
+        'email': { fileId: 'email', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
+        'food': { fileId: 'food', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
         'game': { fileId: 'game', bucket: APPWRITE_CONFIG.buckets.taskImages },
         'grad': { fileId: 'grad', bucket: APPWRITE_CONFIG.buckets.taskImages },
         'guitar': { fileId: 'guitar', bucket: APPWRITE_CONFIG.buckets.taskImages },
