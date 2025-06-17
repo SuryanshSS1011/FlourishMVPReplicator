@@ -199,7 +199,7 @@ export default function NotificationsScreen() {
                         />
                         <Text style={styles.emptyStateTitle}>No Notifications!</Text>
                         <Text style={styles.emptyStateMessage}>
-                            You're all caught up. New notifications will appear here.
+                            You&apos;re all caught up. New notifications will appear here.
                         </Text>
                     </View>
                 )}
