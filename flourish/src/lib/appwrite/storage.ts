@@ -68,14 +68,20 @@ class StorageService {
     }
 
     /**
-     * Get file URL
+     * Get file URL for viewing
      */
     getFileUrl(bucketId: string, fileId: string): string {
-        return appwriteService.getFileUrl(bucketId, fileId);
+        try {
+            const url = this.storage.getFileView(bucketId, fileId);
+            return url instanceof URL ? url.toString() : String(url);
+        } catch (error) {
+            console.warn(`Failed to get file URL for ${bucketId}/${fileId}:`, error);
+            return 'https://via.placeholder.com/150';
+        }
     }
 
     /**
-     * Get file preview URL
+     * Get file preview URL with optional dimensions
      */
     getFilePreview(
         bucketId: string,
@@ -83,17 +89,18 @@ class StorageService {
         width?: number,
         height?: number
     ): string {
-        const baseUrl = appwriteService.getFileUrl(bucketId, fileId);
-        const params = new URLSearchParams();
-
-        if (width) {
-            params.append('width', width.toString());
+        try {
+            let url;
+            if (width || height) {
+                url = this.storage.getFilePreview(bucketId, fileId, width, height);
+            } else {
+                url = this.storage.getFilePreview(bucketId, fileId);
+            }
+            return url instanceof URL ? url.toString() : String(url);
+        } catch (error) {
+            console.warn(`Failed to get file preview for ${bucketId}/${fileId}:`, error);
+            return 'https://via.placeholder.com/150';
         }
-        if (height) {
-            params.append('height', height.toString());
-        }
-
-        return params.toString() ? `${baseUrl}&${params.toString()}` : baseUrl;
     }
 }
 
