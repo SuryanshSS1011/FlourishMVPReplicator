@@ -1,71 +1,64 @@
 // app/_layout.tsx
-import { useEffect } from 'react';
-import { SplashScreen, Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+
+import React, { useEffect } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { AppInitializer } from '../src/components/AppInitializer';
 import { useAuthStore } from '../src/store/authStore';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
-// Prevent the splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const { checkSession } = useAuthStore();
-
-  // Load custom fonts
-  const [fontsLoaded] = useFonts({
-    'Roboto': require('../assets/fonts/Roboto-Regular.ttf'),
-    'Roboto-Bold': require('../assets/fonts/Roboto-Bold.ttf'),
-    'Ubuntu': require('../assets/fonts/Ubuntu-Regular.ttf'),
-    'Ubuntu-Bold': require('../assets/fonts/Ubuntu-Bold.ttf'),
-  });
+function RootLayoutNav() {
+  const router = useRouter();
+  const segments = useSegments();
+  const { user, initialized } = useAuthStore();
 
   useEffect(() => {
-    async function prepare() {
-      try {
-        // Check existing session
-        await checkSession();
+    if (!initialized) return;
 
-        // Preload any critical resources here
+    const inAuthGroup = segments[0] === '(auth)';
+    const inAppGroup = segments[0] === '(app)';
+    const inOnboarding = segments[0] === 'onboarding';
 
-      } catch (e) {
-        console.warn('Error during app initialization:', e);
-      } finally {
-        // Hide splash screen once everything is ready
-        if (fontsLoaded) {
-          await SplashScreen.hideAsync();
-        }
+    if (user) {
+      // User is authenticated
+      const onboardingCompleted = user.prefs?.onboardingCompleted;
+
+      if (!onboardingCompleted && !inOnboarding) {
+        // Redirect to onboarding
+        router.replace('/onboarding');
+      } else if (onboardingCompleted && (inAuthGroup || inOnboarding)) {
+        // Redirect to main app
+        router.replace('/(app)/(tabs)/dashboard');
+      }
+    } else {
+      // User is not authenticated
+      if (inAppGroup) {
+        // Redirect to login
+        router.replace('/(auth)/login');
       }
     }
-
-    prepare();
-  }, [fontsLoaded, checkSession]);
-
-  if (!fontsLoaded) {
-    return null;
-  }
+  }, [user, segments, initialized, router]);
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <StatusBar style="auto" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="(app)" />
-      </Stack>
-    </GestureHandlerRootView>
+    <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(app)" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+    </Stack>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppInitializer>
+          <StatusBar style="auto" />
+          <RootLayoutNav />
+        </AppInitializer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}

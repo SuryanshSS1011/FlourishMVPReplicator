@@ -1,5 +1,8 @@
 // src/types/store.ts
 
+import type { User, Session } from '../lib/appwrite/auth';
+import type { Task, Suggestion, Plant, UserPlant, Nutrient } from './index';
+
 export interface AuthStore {
     user: User | null;
     session: Session | null;

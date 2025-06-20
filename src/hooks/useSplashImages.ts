@@ -31,7 +31,7 @@ export const useSplashImages = (imageIds: string[]) => {
                     try {
                         // Get remote URL
                         const remoteUrl = storageService.getFileUrl(
-                            APPWRITE_CONFIG.buckets.preLogin,
+                            APPWRITE_CONFIG.buckets.preLoginAssets,
                             fileId
                         );
 

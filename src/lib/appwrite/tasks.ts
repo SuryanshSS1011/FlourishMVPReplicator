@@ -3,7 +3,7 @@
 import { ID, Query } from 'react-native-appwrite';
 import { appwriteService, APPWRITE_CONFIG } from './config';
 import { storageService } from './storage';
-import type { Task, TaskDetail, Suggestion, ApiResponse, TaskFormData } from '../../types';
+import type { Task, TaskDetail, Suggestion, ApiResponse } from '../../types';
 
 class TaskService {
     private databases = appwriteService.databaseService;
@@ -98,7 +98,7 @@ class TaskService {
             return {
                 success: true,
                 message: 'Task created successfully',
-                data: response as Task,
+                data: response as unknown as Task,
             };
         } catch (error: any) {
             console.error('Create task error:', error);
@@ -133,7 +133,7 @@ class TaskService {
             return {
                 success: true,
                 message: 'Task detail created successfully',
-                data: response as TaskDetail,
+                data: response as unknown as TaskDetail,
             };
         } catch (error: any) {
             console.error('Create task detail error:', error);
@@ -160,7 +160,7 @@ class TaskService {
             return {
                 success: true,
                 message: 'Task updated successfully',
-                data: response as Task,
+                data: response as unknown as Task,
             };
         } catch (error: any) {
             console.error('Update task error:', error);
@@ -253,7 +253,7 @@ class TaskService {
             return {
                 success: true,
                 message: 'Suggestions fetched successfully',
-                data: response.documents as Suggestion[],
+                data: response.documents as unknown as Suggestion[],
             };
         } catch (error: any) {
             console.error('Fetch suggestions error:', error);

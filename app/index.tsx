@@ -1,24 +1,44 @@
 // app/index.tsx
 
-import { useEffect } from 'react';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '../src/store/authStore';
-import { SplashScreen } from '../src/components/splash/SplashScreen';
+import { LoadingSpinner } from '../src/components/ui/LoadingSpinner';
 
 export default function Index() {
-  const { user, session, loading } = useAuthStore();
+    const { user, initialized } = useAuthStore();
 
-  // Show splash screen while checking authentication
-  if (loading) {
-    return <SplashScreen />;
-  }
+    // Wait for initialization
+    if (!initialized) {
+        return (
+            <View style={styles.container}>
+                <LoadingSpinner message="Loading..." />
+            </View>
+        );
+    }
 
-  // Redirect based on authentication state
-  if (user && session) {
-    return <Redirect href="/(app)/(tabs)/dashboard" />;
-  }
+    // Redirect based on authentication state
+    if (user) {
+        // Check if onboarding is completed
+        const onboardingCompleted = user.prefs?.onboardingCompleted;
+        
+        if (onboardingCompleted) {
+            return <Redirect href="/(app)/(tabs)/dashboard" />;
+        } else {
+            return <Redirect href="/onboarding" />;
+        }
+    }
 
-  // Show onboarding for new users
-  return <Redirect href="/onboarding" />;
+    // Not authenticated - show login
+    return <Redirect href="/(auth)/login" />;
 }
 
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+    },
+});

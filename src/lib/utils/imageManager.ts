@@ -1,236 +1,271 @@
 // src/lib/utils/imageManager.ts
 
-import { storageService } from '../appwrite/storage';
+import { avatarService } from '../appwrite/avatars';
 import { APPWRITE_CONFIG } from '../appwrite/config';
+import { storageService } from '../appwrite/storage';
 
 /**
  * Centralized image manager for Appwrite storage
- * Maps image names to their bucket locations and file IDs
+ * Maps image names to their file IDs and provides URLs
  */
 
 export interface ImageMapping {
     fileId: string;
     bucket: string;
-    fallback?: any; // Fallback to local asset if needed
+    fallback?: any;
 }
 
-// Image mappings by category
-export const IMAGE_MAPPINGS = {
-    // Pre-login assets (splash screens, onboarding, login)
-    preLogin: {
-        'login-page-1': { fileId: 'login-page-1', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'splash1': { fileId: 'splash1', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'splash2': { fileId: 'splash2', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'splash3': { fileId: 'splash3', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'splash4': { fileId: 'splash4', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'splash5': { fileId: 'splash5', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'splash6': { fileId: 'splash6', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'onboarding1': { fileId: 'onboarding1', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'onboarding2': { fileId: 'onboarding2', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-        'onboarding3': { fileId: 'onboarding3', bucket: APPWRITE_CONFIG.buckets.preLoginAssets },
-    },
+// Default file IDs for common assets
+// These should be populated after uploading initial assets to Appwrite
+export const DEFAULT_FILE_IDS = {
+    // Pre-login assets
+    'login-page-1': 'default-login-bg',
+    'splash1': 'splash-screen-1',
+    'splash2': 'splash-screen-2',
+    'splash3': 'splash-screen-3',
+    'splash4': 'splash-screen-4',
+    'splash5': 'splash-screen-5',
+    'splash6': 'splash-screen-6',
+    'onboarding1': 'onboarding-1',
+    'onboarding2': 'onboarding-2',
+    'onboarding3': 'onboarding-3',
 
-    // Dashboard assets (main app UI elements)
-    dashboard: {
-        'sunshine': { fileId: 'sunshine', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'base': { fileId: 'base', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'flower': { fileId: 'flower', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'profile-picture': { fileId: 'profile-picture', bucket: APPWRITE_CONFIG.buckets.userAvatars },
-        'gift': { fileId: 'gift', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'bell': { fileId: 'bell', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-    },
+    // Dashboard assets
+    'sunshine': 'icon-sunshine',
+    'base': 'icon-base',
+    'flower': 'icon-flower',
+    'gift': 'icon-gift',
+    'bell': 'icon-bell',
+    'back-button': 'icon-back',
+    'arrow-right': 'icon-arrow-right',
+    'arrow-left': 'icon-arrow-left',
+    'home2': 'icon-home2',
+    'premium': 'icon-premium',
 
-    // Task icons (all the task-related icons)
-    taskIcons: {
-        '24 hours': { fileId: '24-hours', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'bag': { fileId: 'bag', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'bellring': { fileId: 'bellring', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'burger': { fileId: 'burger', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'call': { fileId: 'call', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'car': { fileId: 'car', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'cheers': { fileId: 'cheers', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
-        'chef': { fileId: 'chef', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'cart': { fileId: 'cart', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'computer': { fileId: 'computer', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
-        'cycle': { fileId: 'cycle', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'doctor': { fileId: 'doctor', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
-        'email': { fileId: 'email', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
-        'food': { fileId: 'food', bucket: APPWRITE_CONFIG.buckets.taskImages }, // Rem
-        'game': { fileId: 'game', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'grad': { fileId: 'grad', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'guitar': { fileId: 'guitar', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'gym': { fileId: 'gym', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'heart': { fileId: 'heart', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'home': { fileId: 'home', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'paint': { fileId: 'paint', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'pet': { fileId: 'pet', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'pizza': { fileId: 'pizza', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'profile': { fileId: 'profile', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'ringbell': { fileId: 'ringbell', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'shopping': { fileId: 'shopping', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'video': { fileId: 'video', bucket: APPWRITE_CONFIG.buckets.taskImages },
-        'tea': { fileId: 'tea', bucket: APPWRITE_CONFIG.buckets.taskImages },
-    },
+    // Tab bar icons
+    'home-icon': 'tab-home',
+    'garden': 'tab-garden',
+    'shop': 'tab-shop',
+    'encyclopedia': 'tab-encyclopedia',
 
-    // Background images
-    backgrounds: {
-        'leafgradient': { fileId: 'leafgradient', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'brick-background': { fileId: 'brick-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'forest-background': { fileId: 'forest-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'marble-background': { fileId: 'marble-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'sky-background': { fileId: 'sky-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'stone-background': { fileId: 'stone-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'wood-background': { fileId: 'wood-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'galaxy-background': { fileId: 'galaxy-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'desert-background': { fileId: 'desert-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'ocean-background': { fileId: 'ocean-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'mountain-background': { fileId: 'mountain-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-    },
+    // Greenhouse elements
+    'border': 'greenhouse-border',
+    'sand': 'greenhouse-sand',
+    'sun': 'greenhouse-sun',
+    'vase': 'greenhouse-vase',
+    'flourish-logo': 'flourish-logo',
 
-    // Plant images
-    plants: {
-        'default-plant': { fileId: 'default-plant', bucket: APPWRITE_CONFIG.buckets.plantImages },
-    },
+    // Premium features
+    'leafff': 'premium-leaf',
+    'welcome-plant': 'premium-welcome',
 
-    // Nutrient images
-    nutrients: {
-        'default-nutrient': { fileId: 'default-nutrient', bucket: APPWRITE_CONFIG.buckets.nutrientImages },
-    },
-
-    // UI elements (arrows, buttons, icons)
-    ui: {
-        'Waterdrop': { fileId: 'waterdrop', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'Clock': { fileId: 'clock', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'calendar_month': { fileId: 'calendar-month', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'Down arrow': { fileId: 'down-arrow', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'Repeat': { fileId: 'repeat', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'wplus': { fileId: 'wplus', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'MagnifyingGlass': { fileId: 'magnifying-glass', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'Plus': { fileId: 'plus', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'back-button': { fileId: 'back-button', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'arrow-right': { fileId: 'arrow-right', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'arrow-left': { fileId: 'arrow-left', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'home2': { fileId: 'home2', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'premium': { fileId: 'premium', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        // Tab bar icons
-        'home-icon': { fileId: 'home-icon', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'garden': { fileId: 'garden', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'shop': { fileId: 'shop', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'encyclopedia': { fileId: 'encyclopedia', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-    },
-
-    // Greenhouse specific elements
-    greenhouse: {
-        'border': { fileId: 'border', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'sand': { fileId: 'sand', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'sun': { fileId: 'sun', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'brick-background': { fileId: 'brick-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'vase': { fileId: 'vase', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'Flourish-logo': { fileId: 'flourish-logo', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-    },
-
-    // Premium feature images
-    premium: {
-        'premium-background': { fileId: 'premium-background', bucket: APPWRITE_CONFIG.buckets.backgrounds },
-        'leafff': { fileId: 'leafff', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-        'welcome-plant': { fileId: 'welcome-plant', bucket: APPWRITE_CONFIG.buckets.dashboardAssets },
-    },
-} as const;
+    // Default images
+    'default-plant': 'default-plant-image',
+    'default-nutrient': 'default-nutrient-image',
+    'default-background': 'default-background',
+};
 
 class ImageManager {
     /**
-     * Get image URL from Appwrite storage
+     * Get image URL from Appwrite storage or fallback to default
      */
-    getImageUrl(category: keyof typeof IMAGE_MAPPINGS, imageName: string): string {
-        const categoryMappings = IMAGE_MAPPINGS[category] as Record<string, ImageMapping>;
-        const mapping = categoryMappings?.[imageName];
+    async getImageUrl(imageName: string, bucket?: string): Promise<string> {
+        try {
+            // First, try to get the file ID from defaults
+            const fileId = DEFAULT_FILE_IDS[imageName as keyof typeof DEFAULT_FILE_IDS];
 
-        if (!mapping) {
-            console.warn(`Image mapping not found for ${category}/${imageName}`);
-            return 'https://via.placeholder.com/150';
+            if (!fileId) {
+                // If no default, use the image name as file ID
+                console.warn(`No default file ID for image: ${imageName}`);
+                return this.getFallbackUrl(imageName);
+            }
+
+            // Determine the bucket based on image type
+            const bucketId = bucket || this.getBucketForImage(imageName);
+
+            // Get the file URL from storage service
+            return storageService.getFileView(bucketId, fileId);
+        } catch (error) {
+            console.error(`Error getting image URL for ${imageName}:`, error);
+            return this.getFallbackUrl(imageName);
         }
-
-        return storageService.getFileUrl(mapping.bucket, mapping.fileId);
     }
 
     /**
      * Get image source object for React Native Image component
      */
-    getImageSource(category: keyof typeof IMAGE_MAPPINGS, imageName: string): { uri: string } {
-        return { uri: this.getImageUrl(category, imageName) };
+    async getImageSource(imageName: string, bucket?: string): Promise<{ uri: string }> {
+        const url = await this.getImageUrl(imageName, bucket);
+        return { uri: url };
     }
 
     /**
      * Get preview URL with dimensions
      */
-    getImagePreview(
-        category: keyof typeof IMAGE_MAPPINGS,
+    async getImagePreview(
         imageName: string,
         width?: number,
-        height?: number
-    ): string {
-        const categoryMappings = IMAGE_MAPPINGS[category] as Record<string, ImageMapping>;
-        const mapping = categoryMappings?.[imageName];
+        height?: number,
+        quality?: number,
+        bucket?: string
+    ): Promise<string> {
+        try {
+            const fileId = DEFAULT_FILE_IDS[imageName as keyof typeof DEFAULT_FILE_IDS] || imageName;
+            const bucketId = bucket || this.getBucketForImage(imageName);
 
-        if (!mapping) {
-            console.warn(`Image mapping not found for ${category}/${imageName}`);
-            return 'https://via.placeholder.com/150';
+            return storageService.getFilePreview(bucketId, fileId, {
+                width,
+                height,
+                quality,
+            });
+        } catch (error) {
+            console.error(`Error getting image preview for ${imageName}:`, error);
+            return this.getFallbackUrl(imageName);
+        }
+    }
+
+    /**
+     * Determine the appropriate bucket for an image based on its name
+     */
+    private getBucketForImage(imageName: string): string {
+        // Pre-login assets
+        if (['login', 'splash', 'onboarding'].some(prefix => imageName.startsWith(prefix))) {
+            return APPWRITE_CONFIG.buckets.preLoginAssets;
         }
 
-        return storageService.getFilePreview(mapping.bucket, mapping.fileId, width, height);
+        // Background images
+        if (imageName.includes('background')) {
+            return APPWRITE_CONFIG.buckets.backgrounds;
+        }
+
+        // Task images
+        if (imageName.includes('task') || this.isTaskIcon(imageName)) {
+            return APPWRITE_CONFIG.buckets.taskImages;
+        }
+
+        // Plant images
+        if (imageName.includes('plant')) {
+            return APPWRITE_CONFIG.buckets.plantImages;
+        }
+
+        // Nutrient images
+        if (imageName.includes('nutrient')) {
+            return APPWRITE_CONFIG.buckets.nutrientImages;
+        }
+
+        // Default to dashboard assets
+        return APPWRITE_CONFIG.buckets.dashboardAssets;
     }
 
     /**
-     * Bulk get multiple image URLs
+     * Check if image name is a task icon
      */
-    getMultipleImageUrls(requests: { category: keyof typeof IMAGE_MAPPINGS; imageName: string }[]): string[] {
-        return requests.map(({ category, imageName }) => this.getImageUrl(category, imageName));
+    private isTaskIcon(imageName: string): boolean {
+        const taskIconNames = [
+            '24 hours', 'bag', 'bellring', 'burger', 'cat', 'clock',
+            'dumbbell', 'family', 'flower-plant', 'game', 'game-console',
+            'heart', 'home', 'love', 'medicine', 'money', 'music',
+            'nature', 'notebook', 'personal', 'plant-hand', 'search',
+            'sleep', 'study', 'television', 'travel', 'water', 'work',
+        ];
+
+        return taskIconNames.includes(imageName);
     }
 
     /**
-     * Get all images in a category
+     * Get fallback URL for missing images
      */
-    getCategoryImages(category: keyof typeof IMAGE_MAPPINGS): Record<string, string> {
-        const categoryMappings = IMAGE_MAPPINGS[category] as Record<string, ImageMapping>;
-        const result: Record<string, string> = {};
+    private getFallbackUrl(imageName: string): string {
+        // Use avatar service to generate a placeholder
+        return avatarService.getUserInitials({
+            name: imageName.charAt(0).toUpperCase(),
+            width: 200,
+            height: 200,
+            background: '9E9E9E',
+        });
+    }
 
-        Object.keys(categoryMappings).forEach(imageName => {
-            result[imageName] = this.getImageUrl(category, imageName);
+    /**
+     * Upload and register a new image
+     */
+    async uploadAndRegisterImage(
+        fileUri: string,
+        imageName: string,
+        bucket?: string
+    ): Promise<{ success: boolean; fileId?: string; url?: string }> {
+        try {
+            const bucketId = bucket || this.getBucketForImage(imageName);
+            const result = await storageService.uploadFile(
+                bucketId,
+                fileUri,
+                imageName
+            );
+
+            if (result.success && result.fileId) {
+                // Update the default file IDs mapping
+                DEFAULT_FILE_IDS[imageName as keyof typeof DEFAULT_FILE_IDS] = result.fileId;
+
+                const url = storageService.getFileView(bucketId, result.fileId);
+                return {
+                    success: true,
+                    fileId: result.fileId,
+                    url,
+                };
+            }
+
+            return { success: false };
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            return { success: false };
+        }
+    }
+
+    /**
+     * Batch preload images for better performance
+     */
+    async preloadImages(imageNames: string[]): Promise<void> {
+        const promises = imageNames.map(async (imageName) => {
+            try {
+                await this.getImageUrl(imageName);
+            } catch (error) {
+                console.error(`Failed to preload ${imageName}:`, error);
+            }
         });
 
-        return result;
-    }
-
-    /**
-     * Helper method for task icons specifically
-     */
-    getTaskIcon(iconName: string): string {
-        return this.getImageUrl('taskIcons', iconName);
-    }
-
-    /**
-     * Helper method for task icon source
-     */
-    getTaskIconSource(iconName: string): { uri: string } {
-        return this.getImageSource('taskIcons', iconName);
+        await Promise.all(promises);
     }
 }
 
-// Export singleton instance
+// Create singleton instance
 export const imageManager = new ImageManager();
 
-// Convenience functions for common use cases
-export const getTaskIcon = (iconName: string) => imageManager.getTaskIcon(iconName);
-export const getTaskIconSource = (iconName: string) => imageManager.getTaskIconSource(iconName);
-export const getPreLoginImage = (imageName: string) => imageManager.getImageUrl('preLogin', imageName);
-export const getPreLoginImageSource = (imageName: string) => imageManager.getImageSource('preLogin', imageName);
-export const getDashboardImage = (imageName: string) => imageManager.getImageUrl('dashboard', imageName);
-export const getDashboardImageSource = (imageName: string) => imageManager.getImageSource('dashboard', imageName);
-export const getUIImage = (imageName: string) => imageManager.getImageUrl('ui', imageName);
-export const getUIImageSource = (imageName: string) => imageManager.getImageSource('ui', imageName);
-export const getGreenhouseImage = (imageName: string) => imageManager.getImageUrl('greenhouse', imageName);
-export const getGreenhouseImageSource = (imageName: string) => imageManager.getImageSource('greenhouse', imageName);
-export const getPremiumImage = (imageName: string) => imageManager.getImageUrl('premium', imageName);
-export const getPremiumImageSource = (imageName: string) => imageManager.getImageSource('premium', imageName);
-export const getBackgroundImage = (imageName: string) => imageManager.getImageUrl('backgrounds', imageName);
-export const getBackgroundImageSource = (imageName: string) => imageManager.getImageSource('backgrounds', imageName);
+// Export helper functions for backward compatibility
+export const getImageUrl = (imageName: string, bucket?: string) =>
+    imageManager.getImageUrl(imageName, bucket);
+
+export const getImageSource = (imageName: string, bucket?: string) =>
+    imageManager.getImageSource(imageName, bucket);
+
+export const getImagePreview = (
+    imageName: string,
+    width?: number,
+    height?: number,
+    quality?: number,
+    bucket?: string
+) => imageManager.getImagePreview(imageName, width, height, quality, bucket);
+
+// Specific helper functions
+export const getBackgroundImageSource = (imageName: string) =>
+    imageManager.getImageSource(imageName, APPWRITE_CONFIG.buckets.backgrounds);
+
+export const getPlantImageSource = (fileId: string) => ({
+    uri: storageService.getPlantImageUrl(fileId)
+});
+
+export const getTaskIconSource = (fileId: string) => ({
+    uri: storageService.getTaskIconUrl(fileId)
+});
+
+export const getNutrientImageSource = (fileId: string) => ({
+    uri: storageService.getNutrientImageUrl(fileId)
+});

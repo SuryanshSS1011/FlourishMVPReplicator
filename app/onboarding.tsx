@@ -1,10 +1,9 @@
 // app/onboarding.tsx
 
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, ViewStyle, TextStyle, ImageStyle } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../src/styles';
-import { getPreLoginImageSource, getUIImageSource } from '../src/lib/utils/imageManager';
+import { getImageSource } from '../src/lib/utils/imageManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -12,17 +11,17 @@ const OnboardingPage = ({
     title,
     description,
     imagePath,
-    backgroundColor = theme.colors.primary[100],
+    backgroundColor = '#E8F5E9',
 }: {
     title: string;
     description: string;
-    imagePath: any;
+    imagePath: { uri: string } | null;
     backgroundColor?: string;
 }) => {
     return (
         <View style={[styles.page, { backgroundColor }]}>
             <View style={styles.imageContainer}>
-                <Image source={imagePath} style={styles.image} resizeMode="contain" />
+                {imagePath && <Image source={imagePath} style={styles.image} resizeMode="contain" />}
             </View>
             <View style={styles.textContainer}>
                 <Text style={styles.title}>{title}</Text>
@@ -41,7 +40,7 @@ const Pagination = ({ activeIndex, length }: { activeIndex: number; length: numb
                     style={[
                         styles.paginationDot,
                         {
-                            backgroundColor: activeIndex === index ? theme.colors.primary[900] : theme.colors.primary[500],
+                            backgroundColor: activeIndex === index ? '#4CAF50' : '#9E9E9E',
                         },
                     ]}
                 />
@@ -53,6 +52,8 @@ const Pagination = ({ activeIndex, length }: { activeIndex: number; length: numb
 export default function Onboarding() {
     const [activeIndex, setActiveIndex] = useState(0);
     const scrollViewRef = useRef<ScrollView>(null);
+    const [images, setImages] = useState<({ uri: string } | null)[]>([null, null, null]);
+    const [arrowImages, setArrowImages] = useState<{ right: { uri: string } | null; left: { uri: string } | null }>({ right: null, left: null });
 
     const handleNext = () => {
         if (activeIndex < 2) {
@@ -78,19 +79,46 @@ export default function Onboarding() {
         {
             title: "Personalized Wellness Journey",
             description: "Select wellness areas to focus on, and Flourish will create a personalized path to help you grow holistically.",
-            imagePath: getPreLoginImageSource('onboarding1'),
+            imageName: 'onboarding1',
         },
         {
             title: "Plant-Based Progress Tracking",
             description: "Complete wellness tasks to earn Water Droplets, nurturing a virtual plant as you track your progress.",
-            imagePath: getPreLoginImageSource('onboarding2'),
+            imageName: 'onboarding2',
         },
         {
             title: "Rewards and Customization",
             description: "Use Leaf currency to personalize your plants and create a space that reflects your journey.",
-            imagePath: getPreLoginImageSource('onboarding3'),
+            imageName: 'onboarding3',
         },
     ];
+
+    useEffect(() => {
+        const loadImages = async () => {
+            try {
+                const imagePromises = onboardingData.map(async (item) => {
+                    try {
+                        return await getImageSource(item.imageName);
+                    } catch {
+                        return null;
+                    }
+                });
+                const loadedImages = await Promise.all(imagePromises);
+                setImages(loadedImages);
+
+                // Load arrow images
+                const [rightArrow, leftArrow] = await Promise.all([
+                    getImageSource('arrow-right').catch(() => null),
+                    getImageSource('arrow-left').catch(() => null),
+                ]);
+                setArrowImages({ right: rightArrow, left: leftArrow });
+            } catch (error) {
+                console.error('Error loading onboarding images:', error);
+            }
+        };
+
+        loadImages();
+    }, []); // onboardingData is constant, no need to include in deps
 
     const handleScroll = (event: any) => {
         const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -115,7 +143,7 @@ export default function Onboarding() {
                         key={index}
                         title={item.title}
                         description={item.description}
-                        imagePath={item.imagePath}
+                        imagePath={images[index]}
                     />
                 ))}
             </ScrollView>
@@ -132,25 +160,25 @@ export default function Onboarding() {
                 <Pagination activeIndex={activeIndex} length={onboardingData.length} />
 
                 <TouchableOpacity
-                    style={[styles.nextButton, { backgroundColor: theme.colors.primary[700] }]}
+                    style={[styles.nextButton, { backgroundColor: '#4CAF50' }]}
                     onPress={handleNext}
                 >
                     <Text style={styles.nextButtonText}>
                         {activeIndex === 2 ? "Get Started" : "Next"}
                     </Text>
-                    {activeIndex < 2 && (
+                    {activeIndex < 2 && arrowImages.right && (
                         <Image
-                            source={getUIImageSource('arrow-right')}
+                            source={arrowImages.right}
                             style={styles.arrowIcon}
                         />
                     )}
                 </TouchableOpacity>
             </View>
 
-            {activeIndex > 0 && (
+            {activeIndex > 0 && arrowImages.left && (
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                     <Image
-                        source={getUIImageSource('arrow-left')}
+                        source={arrowImages.left}
                         style={styles.backArrowIcon}
                     />
                 </TouchableOpacity>
@@ -162,7 +190,7 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.primary[100],
+        backgroundColor: '#F5F5F5',
     },
     page: {
         width,
@@ -186,19 +214,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     title: {
-        fontSize: theme.typography.sizes['4xl'],
-        fontWeight: theme.typography.weights.bold,
+        fontSize: 28,
+        fontWeight: 'bold',
         textAlign: 'center',
         marginBottom: 10,
-        fontFamily: theme.typography.fonts.primary,
-        color: theme.colors.text.primary,
+        fontFamily: 'Roboto',
+        color: '#333333',
     },
     description: {
-        fontSize: theme.typography.sizes.lg,
+        fontSize: 16,
         textAlign: 'center',
-        color: theme.colors.text.secondary,
-        fontFamily: theme.typography.fonts.primary,
-        fontWeight: theme.typography.weights.medium,
+        color: '#666666',
+        fontFamily: 'PlusJakartaSans-Regular',
+        fontWeight: '500',
         lineHeight: 22,
     },
     footer: {
@@ -229,19 +257,23 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 30,
         borderRadius: 5,
-        ...theme.shadows.sm,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     nextButtonText: {
-        color: theme.colors.text.inverse,
-        fontSize: theme.typography.sizes.base,
-        fontWeight: theme.typography.weights.medium,
-        fontFamily: theme.typography.fonts.secondary,
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: '500',
+        fontFamily: 'Roboto',
     },
     arrowIcon: {
         width: 16,
         height: 16,
         marginLeft: 8,
-        tintColor: theme.colors.text.inverse,
+        tintColor: '#FFF',
     },
     backButton: {
         position: 'absolute',
@@ -252,16 +284,16 @@ const styles = StyleSheet.create({
     backArrowIcon: {
         width: 16,
         height: 16,
-        tintColor: theme.colors.primary[900],
+        tintColor: '#4CAF50',
     },
     skipButton: {
         padding: 10,
     },
     skipText: {
-        color: theme.colors.primary[900],
-        fontSize: theme.typography.sizes.lg,
-        fontWeight: theme.typography.weights.medium,
-        fontFamily: theme.typography.fonts.secondary,
+        color: '#4CAF50',
+        fontSize: 16,
+        fontWeight: '500',
+        fontFamily: 'Roboto',
     },
     emptySpace: {
         width: 50,

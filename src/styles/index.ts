@@ -5,8 +5,12 @@ import { layout } from './layout';
 import { shadows } from './shadows';
 
 export const theme = {
-    colors,
+    colors: {
+        ...colors,
+        textSecondary: colors.text.secondary,
+    },
     typography,
+    fonts: typography.fonts,
     spacing,
     layout,
     shadows,

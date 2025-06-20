@@ -6,7 +6,6 @@ import type { Plant, UserPlant, Nutrient, ActiveNutrient, ApiResponse } from '..
 
 class PlantService {
     private databases = appwriteService.databaseService;
-    private storage = appwriteService.storageService;
 
     /**
      * Get all plants
@@ -21,7 +20,7 @@ class PlantService {
             return {
                 success: true,
                 message: 'Plants fetched successfully',
-                data: response.documents as Plant[],
+                data: response.documents as unknown as Plant[],
             };
         } catch (error: any) {
             console.error('Get all plants error:', error);
@@ -48,7 +47,7 @@ class PlantService {
             return {
                 success: true,
                 message: 'User plants fetched successfully',
-                data: response.documents as UserPlant[],
+                data: response.documents as unknown as UserPlant[],
             };
         } catch (error: any) {
             console.error('Get user plants error:', error);
@@ -74,7 +73,7 @@ class PlantService {
             return {
                 success: true,
                 message: 'Nutrients fetched successfully',
-                data: response.documents as Nutrient[],
+                data: response.documents as unknown as Nutrient[],
             };
         } catch (error: any) {
             console.error('Get all nutrients error:', error);
@@ -152,8 +151,8 @@ class PlantService {
                 success: true,
                 message: 'Plant created successfully',
                 data: {
-                    plant: plantResponse as Plant,
-                    userPlant: userPlantResponse as UserPlant,
+                    plant: plantResponse as unknown as Plant,
+                    userPlant: userPlantResponse as unknown as UserPlant,
                 },
             };
         } catch (error: any) {
@@ -181,7 +180,7 @@ class PlantService {
             return {
                 success: true,
                 message: 'User plant updated successfully',
-                data: response as UserPlant,
+                data: response as unknown as UserPlant,
             };
         } catch (error: any) {
             console.error('Update user plant error:', error);
@@ -286,7 +285,7 @@ class PlantService {
             return {
                 success: true,
                 message: 'Nutrient applied successfully',
-                data: response as UserPlant,
+                data: response as unknown as UserPlant,
             };
         } catch (error: any) {
             console.error('Apply nutrient error:', error);

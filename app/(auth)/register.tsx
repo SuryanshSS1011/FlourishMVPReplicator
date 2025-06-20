@@ -3,41 +3,22 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { makeRedirectUri } from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import { authService } from '../../src/lib/appwrite/auth';
+import { OAuthProvider } from 'react-native-appwrite';
 import { theme } from '../../src/styles';
 import { Button } from '../../src/components/ui';
-import { getPreLoginImageSource } from '../../src/lib/utils/imageManager';
 
 export default function RegisterScreen() {
     const handleSignupPress = () => router.push('/(auth)/signup');
     const handleLoginPress = () => router.push('/(auth)/login');
 
-    const deepLink = new URL(makeRedirectUri({ preferLocalhost: true }));
-    if (!deepLink.hostname) {
-        deepLink.hostname = 'localhost';
-    }
-    const scheme = `${deepLink.protocol}//`;
 
     const handleGooglePress = async () => {
         try {
-            const result = await authService.createOAuth2Session('google');
-            if (result.success && result.data) {
-                const authResult = await WebBrowser.openAuthSessionAsync(result.data, scheme);
-
-                if (authResult.type === 'success') {
-                    const url = new URL(authResult.url);
-                    const secret = url.searchParams.get('secret');
-                    const userId = url.searchParams.get('userId');
-
-                    if (userId && secret) {
-                        const sessionResult = await authService.createOAuth2SessionFromCallback(userId, secret);
-                        if (sessionResult.success) {
-                            router.replace('/(app)/(tabs)/dashboard');
-                        }
-                    }
-                }
+            const result = await authService.createOAuth2Session(OAuthProvider.Google);
+            if (result.success) {
+                // OAuth2 session is handled by Appwrite and redirects automatically
+                router.replace('/(app)/(tabs)/dashboard');
             }
         } catch (error) {
             console.error('Google sign-in failed:', error);
@@ -49,7 +30,7 @@ export default function RegisterScreen() {
             <LinearGradient colors={['#AEB1AE', '#4A7B56']} style={styles.gradient}>
                 <Image
                     style={styles.backgroundImage}
-                    source={getPreLoginImageSource('login-page-1')}
+                    source={{ uri: 'https://via.placeholder.com/400x800/4A7B56/FFFFFF?text=Flourish' }}
                 />
                 <View style={styles.buttonContainer}>
                     <View style={styles.authButtonsContainer}>

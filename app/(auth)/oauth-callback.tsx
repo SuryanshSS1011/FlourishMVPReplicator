@@ -1,20 +1,19 @@
 // app/(auth)/oauth-callback.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { authService } from '../../src/lib/appwrite/auth';
 import { useAuthStore } from '../../src/store/authStore';
 import { theme } from '../../src/styles';
 import { LoadingSpinner } from '../../src/components/ui';
 
 export default function OAuthCallbackScreen() {
-    const { userId, secret, error } = useLocalSearchParams<{
+    const { error } = useLocalSearchParams<{
         userId?: string;
         secret?: string;
         error?: string;
     }>();
 
-    const { checkSession } = useAuthStore();
+    const { checkSession, user } = useAuthStore();
     const [processing, setProcessing] = useState(true);
 
     useEffect(() => {
@@ -38,31 +37,13 @@ export default function OAuthCallbackScreen() {
                 return;
             }
 
-            if (!userId || !secret) {
-                console.error('Missing OAuth parameters');
-                Alert.alert(
-                    'Invalid Callback',
-                    'Invalid authentication callback. Please try again.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => router.replace('/(auth)/login'),
-                        },
-                    ]
-                );
-                return;
-            }
-
             console.log('Processing OAuth callback...');
 
-            // Create session from OAuth callback
-            const result = await authService.createOAuth2SessionFromCallback(userId, secret);
+            // Check if user is now authenticated
+            await checkSession();
 
-            if (result.success) {
-                console.log('OAuth session created successfully');
-
-                // Update auth store
-                await checkSession();
+            if (user) {
+                console.log('OAuth session verified successfully');
 
                 // Navigate to success screen or dashboard
                 router.replace({
@@ -73,10 +54,10 @@ export default function OAuthCallbackScreen() {
                     },
                 });
             } else {
-                console.error('OAuth session creation failed:', result.message);
+                console.error('OAuth session verification failed');
                 Alert.alert(
                     'Authentication Failed',
-                    result.message || 'Failed to complete authentication',
+                    'Failed to verify authentication session',
                     [
                         {
                             text: 'OK',

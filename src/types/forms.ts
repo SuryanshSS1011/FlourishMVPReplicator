@@ -106,7 +106,7 @@ export interface FormValidationRule {
     minLength?: number;
     maxLength?: number;
     pattern?: RegExp;
-    custom?: (value: any) => string | undefined;
+    custom?: (value: any, formData?: any) => string | undefined;
 }
 
 export interface FormValidationSchema {

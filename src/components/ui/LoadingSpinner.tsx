@@ -28,13 +28,12 @@ const spinnerStyles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: theme.spacing.xl,
+        padding: 20,
     },
     message: {
-        marginTop: theme.spacing.md,
-        fontSize: theme.typography.sizes.base,
+        marginTop: 12,
+        fontSize: 16,
         color: theme.colors.text.secondary,
         textAlign: 'center',
-        fontFamily: theme.typography.fonts.primary,
     },
 });

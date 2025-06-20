@@ -1,925 +1,724 @@
 // app/(app)/(tabs)/dashboard.tsx
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
-    ImageBackground,
     Text,
+    StyleSheet,
+    ScrollView,
     TouchableOpacity,
     Image,
-    FlatList,
-    StyleSheet,
-    Animated,
-    PanResponder,
+    ActivityIndicator,
+    RefreshControl,
     Alert,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useAuthStore } from '../../../src/store/authStore';
-import { useTasksStore } from '../../../src/store/tasksStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../../src/styles';
-import { LoadingSpinner } from '../../../src/components/ui';
-import type { Task } from '../../../src/types';
-import { getUIImageSource, getDashboardImageSource } from '../../../src/lib/utils/imageManager';
+import { useAuthStore } from '../../../src/store/authStore';
+import { plantService } from '../../../src/lib/services/plantService';
+import { taskService } from '../../../src/lib/services/taskService';
+import { avatarService } from '../../../src/lib/appwrite/avatars';
+import type { PlantWithUserData } from '../../../src/lib/services/plantService';
+import type { TaskWithDetails, TaskStats } from '../../../src/lib/services/taskService';
 
-// Separate TaskItem component for dashboard quick tasks
-const DashboardTaskItem = ({
-    item,
-    activeTab,
-    onSwipeComplete,
-    onSwipeSkip
-}: {
-    item: Task;
-    activeTab: 'daily' | 'personal';
-    onSwipeComplete: (taskId: string) => void;
-    onSwipeSkip: (taskId: string) => void;
-}) => {
-    const swipeAnim = useRef(new Animated.Value(0)).current;
-    const [isOpen, setIsOpen] = useState(false);
+interface DashboardData {
+    mainPlant: PlantWithUserData | null;
+    todayTasks: TaskWithDetails[];
+    taskStats: TaskStats;
+    plantHealth: number;
+    nextWatering: Date | null;
+}
 
-    const SWIPE_THRESHOLD = 20;
-    const SWIPE_ACTION_WIDTH = 120;
-
-    const panResponder = PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onPanResponderMove: (_, gestureState) => {
-            if (gestureState.dx > 0) {
-                swipeAnim.setValue(Math.min(gestureState.dx, SWIPE_ACTION_WIDTH));
-            }
+export default function DashboardScreen() {
+    const { user } = useAuthStore();
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [dashboardData, setDashboardData] = useState<DashboardData>({
+        mainPlant: null,
+        todayTasks: [],
+        taskStats: {
+            totalTasks: 0,
+            completedTasks: 0,
+            pendingTasks: 0,
+            overdueTasks: 0,
+            completionRate: 0,
+            streak: 0,
+            totalPoints: 0,
         },
-        onPanResponderRelease: (_, gestureState) => {
-            if (gestureState.dx > SWIPE_THRESHOLD) {
-                Animated.spring(swipeAnim, {
-                    toValue: SWIPE_ACTION_WIDTH,
-                    useNativeDriver: true,
-                }).start();
-                setIsOpen(true);
-            } else {
-                Animated.spring(swipeAnim, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                }).start();
-                setIsOpen(false);
-            }
-        },
+        plantHealth: 0,
+        nextWatering: null,
     });
 
-    const closeSwipe = () => {
-        Animated.spring(swipeAnim, {
-            toValue: 0,
-            useNativeDriver: true,
-        }).start(() => setIsOpen(false));
-    };
-
-    const handleSkip = () => {
-        onSwipeSkip(item.$id);
-        closeSwipe();
-    };
-
-    const handleComplete = () => {
-        onSwipeComplete(item.$id);
-        closeSwipe();
-    };
-
-    const taskBackgroundColor = activeTab === 'daily'
-        ? theme.colors.secondary[500]
-        : theme.colors.primary[500];
-
-    const iconBackgroundColor = activeTab === 'daily'
-        ? theme.colors.primary[500]
-        : theme.colors.secondary[500];
-
-    const getTaskIconUrl = (fileId: string | null) => {
-        if (!fileId || fileId.trim() === "") {
-            return getUIImageSource('Waterdrop');
-        }
-        return { uri: `https://cloud.appwrite.io/v1/storage/buckets/67e227bf00075deadffc/files/${fileId}/view?project=67cfa24f0031e006fba3` };
-    };
-
-    return (
-        <View style={styles.dashboardTaskItem}>
-            {/* Swipe actions backdrop */}
-            <View style={[
-                styles.swipeActionsBackdrop,
-                { backgroundColor: taskBackgroundColor }
-            ]}>
-                <View style={styles.dashboardSwipeActions}>
-                    <TouchableOpacity
-                        style={[styles.dashboardActionButton, styles.skipActionButton]}
-                        onPress={handleSkip}
-                    >
-                        <Text style={styles.actionButtonText}>Skip</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.dashboardActionButton, styles.completeActionButton]}
-                        onPress={handleComplete}
-                    >
-                        <Text style={styles.actionButtonText}>✓</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* Task content */}
-            <Animated.View
-                style={[
-                    styles.taskContent,
-                    { transform: [{ translateX: swipeAnim }] },
-                    { backgroundColor: taskBackgroundColor }
-                ]}
-                {...panResponder.panHandlers}
-            >
-                {/* Task icon */}
-                <View style={[
-                    styles.taskIconContainer,
-                    { backgroundColor: iconBackgroundColor }
-                ]}>
-                    <Image
-                        source={getTaskIconUrl(item.icon)}
-                        style={styles.taskIcon}
-                        resizeMode="contain"
-                    />
-                </View>
-
-                {/* Task info */}
-                <View style={styles.taskInfo}>
-                    <Text style={styles.taskTitle} numberOfLines={1}>
-                        {item.Title}
-                    </Text>
-                    <Text style={styles.taskCategory}>
-                        {item.category_type} • Today
-                    </Text>
-                </View>
-
-                {/* Points */}
-                <View style={styles.taskPoints}>
-                    <Text style={styles.pointsText}>{item.points || 5}</Text>
-                    <Image
-                        source={getUIImageSource('Waterdrop')}
-                        style={styles.pointsIcon}
-                    />
-                </View>
-
-                {/* Favorite star */}
-                <TouchableOpacity
-                    style={styles.favoriteButton}
-                    onPress={() => console.log('Toggle favorite')}
-                >
-                    <Text style={styles.favoriteIcon}>
-                        {item.isFavorite ? "★" : "☆"}
-                    </Text>
-                </TouchableOpacity>
-            </Animated.View>
-        </View>
-    );
-};
-
-export default function Dashboard() {
-    const { user } = useAuthStore();
-    const { tasks, loading, error, fetchTasks, markCompleted, updateTask } = useTasksStore();
-
-    const [activeTab, setActiveTab] = useState<'daily' | 'personal'>('daily');
-    const [waterPercentage] = useState(50); // This would come from user progress
-
-    const toggleAnim = useRef(new Animated.Value(0)).current;
-    const taskListAnim = useRef(new Animated.Value(0)).current;
-
-    // Fetch tasks on component mount
     useEffect(() => {
-        if (user?.$id) {
-            fetchTasks(user.$id);
+        loadDashboardData();
+    }, [loadDashboardData]);
+
+    const loadDashboardData = useCallback(async () => {
+        try {
+            setLoading(true);
+
+            // Load user's main plant
+            const plantsResult = await plantService.getUserPlants();
+            const mainPlant = plantsResult.success && plantsResult.data?.length > 0 
+                ? plantsResult.data[0] 
+                : null;
+
+            // Load today's tasks
+            const tasksResult = await taskService.getTodayTasks();
+            const todayTasks = tasksResult.success ? tasksResult.data || [] : [];
+
+            // Load task statistics
+            const statsResult = await taskService.getUserTaskStats();
+            const taskStats = statsResult.success && statsResult.data 
+                ? statsResult.data 
+                : dashboardData.taskStats;
+
+            // Calculate plant health based on care
+            let plantHealth = 0;
+            let nextWatering = null;
+
+            if (mainPlant) {
+                const scheduleResult = await plantService.getPlantCareSchedule(
+                    mainPlant.userPlant!.$id
+                );
+                
+                if (scheduleResult.success && scheduleResult.data) {
+                    const overdueTasks = scheduleResult.data.tasks.filter(t => t.overdue).length;
+                    plantHealth = Math.max(0, 100 - (overdueTasks * 25));
+                    nextWatering = scheduleResult.data.nextWatering;
+                }
+            }
+
+            setDashboardData({
+                mainPlant,
+                todayTasks,
+                taskStats,
+                plantHealth,
+                nextWatering,
+            });
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+            Alert.alert('Error', 'Failed to load dashboard data');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
         }
-    }, [user?.$id, fetchTasks]);
+    }, []);
 
-    // Filter tasks for quick view (active tasks only)
-    const quickTasks = tasks.filter((task: Task) => {
-        const status = task.status || "active";
-        const categoryType = task.category_type.toLowerCase();
-        return status !== "completed" && status !== "skipped" && categoryType === activeTab;
-    }).slice(0, 3); // Show only first 3 tasks
-
-    // Toggle between daily and personal tasks
-    const toggleTaskType = () => {
-        // Start with toggle animation
-        Animated.timing(toggleAnim, {
-            toValue: activeTab === 'daily' ? 1 : 0,
-            duration: 250,
-            useNativeDriver: false,
-        }).start();
-
-        // Then animate the task list
-        Animated.timing(taskListAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-        }).start(() => {
-            setActiveTab(activeTab === 'daily' ? 'personal' : 'daily');
-            taskListAnim.setValue(0);
-        });
+    const handleRefresh = () => {
+        setRefreshing(true);
+        loadDashboardData();
     };
 
-    // Handle task completion
-    const handleTaskComplete = async (taskId: string) => {
+    const handleTaskComplete = async (taskDetailId: string) => {
         try {
-            await markCompleted(taskId);
-            // Refresh tasks after completion
-            if (user?.$id) {
-                await fetchTasks(user.$id);
+            const result = await taskService.completeTask(taskDetailId);
+            
+            if (result.success) {
+                Alert.alert(
+                    'Task Completed!',
+                    `You earned ${result.data?.points || 0} points!`,
+                    [{ text: 'OK', onPress: () => loadDashboardData() }]
+                );
             }
-        } catch (err) {
+        } catch (error) {
+            console.error('Error completing task:', error);
             Alert.alert('Error', 'Failed to complete task');
         }
     };
 
-    // Handle task skipping
-    const handleTaskSkip = async (taskId: string) => {
-        try {
-            await updateTask(taskId, { status: 'skipped' });
-            // Refresh tasks after skipping
-            if (user?.$id) {
-                await fetchTasks(user.$id);
-            }
-        } catch (err) {
-            Alert.alert('Error', 'Failed to skip task');
+    const getPlantImage = () => {
+        if (dashboardData.mainPlant?.imageUrl) {
+            return { uri: dashboardData.mainPlant.imageUrl };
         }
+        // Return default plant image
+        return require('../../../../assets/images/default-plant.png');
     };
 
-    // Handle navigation to greenhouse
-    const handleGreenhousePress = () => {
-        router.push('/(app)/(tabs)/greenhouse');
+    const getPlantSizeStyle = () => {
+        const health = dashboardData.plantHealth;
+        const scale = 0.6 + (health / 100) * 0.4; // Scale from 0.6 to 1.0
+        return {
+            transform: [{ scale }],
+        };
     };
 
-    // Handle navigation to premium
-    const handlePremiumPress = () => {
-        router.push('/(app)/premium');
-    };
+    const renderHeader = () => (
+        <View style={styles.header}>
+            <View style={styles.headerTop}>
+                <TouchableOpacity 
+                    style={styles.notificationButton}
+                    onPress={() => router.push('/(app)/notifications')}
+                >
+                    <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
+                    {dashboardData.taskStats.overdueTasks > 0 && (
+                        <View style={styles.notificationBadge}>
+                            <Text style={styles.badgeText}>
+                                {dashboardData.taskStats.overdueTasks}
+                            </Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
 
-    // Handle navigation to task creation
-    const handleCreateTaskPress = () => {
-        if (user?.$id) {
-            router.push({
-                pathname: '/(app)/tasks/form',
-                params: { userId: user.$id }
-            });
-        }
-    };
-
-    // Handle navigation to all tasks
-    const handleViewAllTasksPress = () => {
-        router.push('/(app)/(tabs)/tasks');
-    };
-
-    // Interpolate the toggle button position
-    const togglePosition = toggleAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0%', '50%'],
-    });
-
-    // Render quick tasks section
-    const renderQuickTasks = () => {
-        if (loading && tasks.length === 0) {
-            return (
-                <View style={styles.quickTasksContainer}>
-                    <LoadingSpinner message="Loading tasks..." />
-                </View>
-            );
-        }
-
-        if (quickTasks.length === 0) {
-            return (
-                <View style={styles.quickTasksContainer}>
-                    <View style={styles.quickTasksHeader}>
-                        <Text style={styles.quickTasksTitle}>Today&apos;s Tasks</Text>
-                        <TouchableOpacity onPress={handleViewAllTasksPress}>
-                            <Text style={styles.viewAllTasksText}>View All</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <View style={styles.emptyTasksContainer}>
-                        <Text style={styles.emptyTasksText}>No {activeTab} tasks for today</Text>
-                        <TouchableOpacity
-                            style={styles.createTaskButton}
-                            onPress={handleCreateTaskPress}
-                        >
-                            <Text style={styles.createTaskButtonText}>Create Task</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            );
-        }
-
-        return (
-            <View style={styles.quickTasksContainer}>
-                {/* Header */}
-                <View style={styles.quickTasksHeader}>
-                    <Text style={styles.quickTasksTitle}>Today&apos;s Tasks</Text>
-                    <TouchableOpacity onPress={handleViewAllTasksPress}>
-                        <Text style={styles.viewAllTasksText}>View All</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Task Toggle */}
-                <View style={styles.dashboardTaskToggle}>
-                    <Animated.View
-                        style={[
-                            styles.dashboardToggleHighlight,
-                            {
-                                left: togglePosition,
-                                backgroundColor: theme.colors.secondary[500],
-                            },
-                        ]}
+                <TouchableOpacity 
+                    style={styles.profileButton}
+                    onPress={() => router.push('/(app)/profile')}
+                >
+                    <Image
+                        source={{ 
+                            uri: avatarService.getUserAvatar(user?.name, 40) 
+                        }}
+                        style={styles.profileImage}
                     />
-                    <TouchableOpacity
-                        style={styles.dashboardToggleButton}
-                        onPress={() => activeTab === 'personal' && toggleTaskType()}
-                    >
-                        <Text style={[
-                            styles.dashboardToggleText,
-                            activeTab === 'daily' && styles.activeToggleText
-                        ]}>
-                            Daily
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.dashboardToggleButton}
-                        onPress={() => activeTab === 'daily' && toggleTaskType()}
-                    >
-                        <Text style={[
-                            styles.dashboardToggleText,
-                            activeTab === 'personal' && styles.activeToggleText
-                        ]}>
-                            Personal
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Tasks List */}
-                <Animated.View
-                    style={[
-                        styles.dashboardTasksList,
-                        {
-                            opacity: taskListAnim.interpolate({
-                                inputRange: [0, 0.5, 1],
-                                outputRange: [1, 0, 1],
-                            }),
-                            transform: [
-                                {
-                                    translateX: taskListAnim.interpolate({
-                                        inputRange: [0, 0.5, 1],
-                                        outputRange: [0, -20, 0],
-                                    }),
-                                },
-                            ],
-                        },
-                    ]}
-                >
-                    {quickTasks.map((task) => (
-                        <DashboardTaskItem
-                            key={task.$id}
-                            item={task}
-                            activeTab={activeTab}
-                            onSwipeComplete={handleTaskComplete}
-                            onSwipeSkip={handleTaskSkip}
-                        />
-                    ))}
-                </Animated.View>
-
-                {/* Create Task Button */}
-                <TouchableOpacity
-                    style={styles.addTaskButton}
-                    onPress={handleCreateTaskPress}
-                >
-                    <Text style={styles.addTaskButtonText}>+ Add Task</Text>
                 </TouchableOpacity>
             </View>
+
+            <Text style={styles.greeting}>
+                Hello, {user?.name || 'Plant Parent'}! 👋
+            </Text>
+            
+            <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{dashboardData.taskStats.streak}</Text>
+                    <Text style={styles.statLabel}>Day Streak</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{dashboardData.taskStats.totalPoints}</Text>
+                    <Text style={styles.statLabel}>Total Points</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{dashboardData.taskStats.completionRate}%</Text>
+                    <Text style={styles.statLabel}>Completion</Text>
+                </View>
+            </View>
+        </View>
+    );
+
+    const renderPlantSection = () => (
+        <View style={styles.plantSection}>
+            <LinearGradient
+                colors={['#E8F5E9', '#C8E6C9']}
+                style={styles.plantBackground}
+            >
+                {/* Sun icon */}
+                <Image
+                    source={{ uri: avatarService.getWeatherIcon('sunny', 60) }}
+                    style={styles.sunIcon}
+                />
+
+                {/* Plant container */}
+                <View style={styles.plantContainer}>
+                    {dashboardData.mainPlant ? (
+                        <View style={[styles.plant, getPlantSizeStyle()]}>
+                            <Image
+                                source={getPlantImage()}
+                                style={styles.plantImage}
+                                resizeMode="contain"
+                            />
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.addPlantButton}
+                            onPress={() => router.push('/(app)/plants/add')}
+                        >
+                            <Ionicons name="add-circle-outline" size={48} color={theme.colors.primary} />
+                            <Text style={styles.addPlantText}>Add Your First Plant</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Pot */}
+                    <Image
+                        source={require('../../../../assets/images/pot.png')}
+                        style={styles.pot}
+                        resizeMode="contain"
+                    />
+                </View>
+
+                {/* Plant info */}
+                {dashboardData.mainPlant && (
+                    <View style={styles.plantInfo}>
+                        <Text style={styles.plantName}>
+                            {dashboardData.mainPlant.userPlant?.nickname || dashboardData.mainPlant.name}
+                        </Text>
+                        <View style={styles.healthBar}>
+                            <View 
+                                style={[
+                                    styles.healthFill, 
+                                    { 
+                                        width: `${dashboardData.plantHealth}%`,
+                                        backgroundColor: dashboardData.plantHealth > 70 
+                                            ? '#4CAF50' 
+                                            : dashboardData.plantHealth > 40 
+                                                ? '#FFC107' 
+                                                : '#F44336'
+                                    }
+                                ]} 
+                            />
+                        </View>
+                        {dashboardData.nextWatering && (
+                            <Text style={styles.wateringText}>
+                                Next watering: {dashboardData.nextWatering.toLocaleDateString()}
+                            </Text>
+                        )}
+                    </View>
+                )}
+            </LinearGradient>
+        </View>
+    );
+
+    const renderTaskItem = (task: TaskWithDetails) => {
+        const isOverdue = task.taskDetail && 
+            task.taskDetail.status === 'pending' && 
+            new Date(task.taskDetail.scheduledDate) < new Date();
+
+        return (
+            <TouchableOpacity
+                key={task.taskDetail?.$id}
+                style={[
+                    styles.taskItem,
+                    task.taskDetail?.status === 'completed' && styles.completedTask,
+                    isOverdue && styles.overdueTask,
+                ]}
+                onPress={() => {
+                    if (task.taskDetail?.status === 'pending') {
+                        handleTaskComplete(task.taskDetail.$id);
+                    }
+                }}
+                disabled={task.taskDetail?.status === 'completed'}
+            >
+                <View style={styles.taskIcon}>
+                    {task.iconUrl ? (
+                        <Image 
+                            source={{ uri: task.iconUrl }} 
+                            style={styles.taskIconImage}
+                        />
+                    ) : (
+                        <Ionicons 
+                            name={task.category === 'watering' ? 'water' : 'leaf'} 
+                            size={24} 
+                            color={theme.colors.primary} 
+                        />
+                    )}
+                </View>
+
+                <View style={styles.taskContent}>
+                    <Text style={styles.taskName}>{task.name}</Text>
+                    <Text style={styles.taskPoints}>{task.points} points</Text>
+                </View>
+
+                {task.taskDetail?.status === 'completed' ? (
+                    <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                ) : (
+                    <View style={styles.taskAction}>
+                        <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+                    </View>
+                )}
+            </TouchableOpacity>
         );
     };
 
-    if (loading && tasks.length === 0) {
-        return <LoadingSpinner message="Loading your dashboard..." />;
-    }
-
-    if (error) {
-        return (
-            <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity
-                    style={styles.retryButton}
-                    onPress={() => user?.$id && fetchTasks(user.$id)}
-                >
-                    <Text style={styles.retryButtonText}>Retry</Text>
+    const renderTasksSection = () => (
+        <View style={styles.tasksSection}>
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Today&apos;s Tasks</Text>
+                <TouchableOpacity onPress={() => router.push('/(app)/tasks')}>
+                    <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
+            </View>
+
+            {dashboardData.todayTasks.length > 0 ? (
+                dashboardData.todayTasks.map(renderTaskItem)
+            ) : (
+                <View style={styles.emptyTasks}>
+                    <Ionicons name="checkmark-done-circle" size={48} color={theme.colors.textSecondary} />
+                    <Text style={styles.emptyTasksText}>All tasks completed!</Text>
+                    <TouchableOpacity
+                        style={styles.addTaskButton}
+                        onPress={() => router.push('/(app)/tasks/create')}
+                    >
+                        <Text style={styles.addTaskButtonText}>Add New Task</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+        </View>
+    );
+
+    const renderQuickActions = () => (
+        <View style={styles.quickActions}>
+            <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => router.push('/(app)/greenhouse')}
+            >
+                <LinearGradient
+                    colors={['#81C784', '#66BB6A']}
+                    style={styles.actionGradient}
+                >
+                    <Ionicons name="leaf" size={24} color="#FFF" />
+                    <Text style={styles.actionText}>Greenhouse</Text>
+                </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => router.push('/(app)/shop')}
+            >
+                <LinearGradient
+                    colors={['#64B5F6', '#42A5F5']}
+                    style={styles.actionGradient}
+                >
+                    <Ionicons name="cart" size={24} color="#FFF" />
+                    <Text style={styles.actionText}>Shop</Text>
+                </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => router.push('/(app)/achievements')}
+            >
+                <LinearGradient
+                    colors={['#FFB74D', '#FFA726']}
+                    style={styles.actionGradient}
+                >
+                    <Ionicons name="trophy" size={24} color="#FFF" />
+                    <Text style={styles.actionText}>Achievements</Text>
+                </LinearGradient>
+            </TouchableOpacity>
+        </View>
+    );
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Loading your garden...</Text>
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
-            {/* Background Images */}
-            <ImageBackground
-                source={getDashboardImageSource('sunshine')}
-                style={styles.background}
-            />
-            <ImageBackground
-                source={getDashboardImageSource('base')}
-                style={styles.table}
-            />
-            <ImageBackground
-                source={getDashboardImageSource('flower')}
-                style={styles.plant}
-            />
-
-            {/* Header with Profile, Gift and Bell icons */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.profileButton}>
-                    <Image
-                        source={getDashboardImageSource('profile-picture')}
-                        style={styles.profileIcon}
-                    />
-                </TouchableOpacity>
-                <View style={styles.rightIcons}>
-                    <TouchableOpacity style={styles.iconButton}>
-                        <Image
-                            source={getDashboardImageSource('gift')}
-                            style={styles.headerIcon}
-                        />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => router.push('/(app)/notifications')}
-                    >
-                        <Image
-                            source={getDashboardImageSource('bell')}
-                            style={styles.headerIcon}
-                        />
-                        <View style={styles.notificationBadge}>
-                            <Text style={styles.notificationText}></Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* Water Level Stats */}
-            <View style={styles.waterLevelBarContainer}>
-                <View style={styles.levelContainer}>
-                    <Text style={styles.levelText}>Lv: 10</Text>
-                </View>
-                <View style={styles.waterBarWrapper}>
-                    <View style={styles.waterBar}>
-                        <View style={[styles.waterFill, { width: `${waterPercentage}%` }]} />
-                        <View style={styles.waterBarContent}>
-                            <Image
-                                source={getUIImageSource('Waterdrop')}
-                                style={styles.waterBarIcon}
-                            />
-                            <View style={styles.waterPercentageContainer}>
-                                <Text style={styles.waterPercentageText}>{waterPercentage}%</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-                <View style={styles.pointsContainer}>
-                    <Text style={styles.pointsText}>50</Text>
-                    <Image
-                        source={getUIImageSource('Waterdrop')}
-                        style={styles.dropletIcon}
-                    />
-                </View>
-            </View>
-
-            {/* Greenhouse & Premium Buttons */}
-            <View style={styles.specialButtonsContainer}>
-                <TouchableOpacity style={styles.specialButton} onPress={handleGreenhousePress}>
-                    <Image
-                        source={getUIImageSource('home2')}
-                        style={styles.specialButtonIcon}
-                    />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.specialButton} onPress={handlePremiumPress}>
-                    <Image
-                        source={getUIImageSource('premium')}
-                        style={styles.specialButtonIcon}
-                    />
-                </TouchableOpacity>
-            </View>
-
-            {/* Backdrop Panel */}
-            <View style={styles.backdropPanel} />
-
-            {/* Quick Tasks Section */}
-            {renderQuickTasks()}
-        </View>
+        <ScrollView 
+            style={styles.container}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    colors={[theme.colors.primary]}
+                />
+            }
+        >
+            {renderHeader()}
+            {renderPlantSection()}
+            {renderTasksSection()}
+            {renderQuickActions()}
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#DEDED0",
+        backgroundColor: theme.colors.background,
     },
-    background: {
-        position: "absolute",
-        width: "100%",
-        height: "100%",
-        top: "0%",
-        resizeMode: "cover",
+    contentContainer: {
+        paddingBottom: 100,
     },
-    table: {
-        position: "absolute",
-        width: "100%",
-        height: "100%",
-        top: "-5%",
-        resizeMode: "cover",
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: theme.colors.background,
     },
-    plant: {
-        position: "absolute",
-        width: "90%",
-        height: "90%",
-        top: "4%",
-        left: "9%",
-        resizeMode: "cover",
-    },
-    backdropPanel: {
-        position: "absolute",
-        bottom: 0,
-        width: "100%",
-        height: "43%",
-        backgroundColor: "#DEDED0",
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.4,
-        shadowRadius: 3,
-        elevation: 4,
+    loadingText: {
+        marginTop: 12,
+        fontSize: 16,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.fonts.regular,
     },
     header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        position: "absolute",
-        top: 55,
-        left: 15,
-        right: 15,
-        zIndex: 10,
+        padding: 20,
+        paddingTop: 60,
     },
-    profileButton: {},
-    profileIcon: {
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    notificationButton: {
+        position: 'relative',
+        padding: 8,
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        backgroundColor: '#F44336',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    badgeText: {
+        fontSize: 12,
+        color: '#FFF',
+        fontFamily: theme.fonts.bold,
+    },
+    profileButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
+        overflow: 'hidden',
     },
-    rightIcons: {
-        flexDirection: "row",
+    profileImage: {
+        width: '100%',
+        height: '100%',
     },
-    iconButton: {
-        marginLeft: 15,
-        position: "relative",
-    },
-    headerIcon: {
-        width: 27,
-        height: 27,
-    },
-    notificationBadge: {
-        position: "absolute",
-        top: -5,
-        right: -5,
-        backgroundColor: "#68A1A1",
-        borderRadius: 10,
-        width: 16,
-        height: 16,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    notificationText: {
-        fontSize: 10,
-        color: "white",
-        fontWeight: "bold",
-    },
-    waterLevelBarContainer: {
-        position: "absolute",
-        top: "58.5%",
-        width: "90%",
-        alignSelf: "center",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 5,
-    },
-    levelContainer: {
-        backgroundColor: "#68A1A1",
-        borderRadius: 20,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-    },
-    levelText: {
-        fontSize: 12,
-        fontWeight: "bold",
-        color: "#FFFFFF",
-    },
-    waterBarWrapper: {
-        flex: 1,
-        paddingHorizontal: 10,
-    },
-    waterBar: {
-        height: 18,
-        backgroundColor: "#68A1A1",
-        borderRadius: 4,
-        justifyContent: "center",
-        overflow: "hidden",
-        position: "relative",
-    },
-    waterFill: {
-        position: "absolute",
-        left: 0,
-        height: "100%",
-        backgroundColor: "#468080",
-        borderRadius: 4,
-    },
-    waterBarContent: {
-        flexDirection: "row",
-        alignItems: "center",
-        position: "absolute",
-        width: "100%",
-        height: "100%",
-        zIndex: 2,
-        paddingHorizontal: 6,
-    },
-    waterBarIcon: {
-        width: 14,
-        height: 14,
-        resizeMode: "contain",
-    },
-    waterPercentageContainer: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        left: "-2%",
-    },
-    waterPercentageText: {
-        fontSize: 12,
-        fontWeight: "bold",
-        color: "#FFFFFF",
-    },
-    pointsContainer: {
-        flexDirection: "row",
-        backgroundColor: "#68A1A1",
-        borderRadius: 20,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        alignItems: "center",
-    },
-    pointsText: {
-        fontSize: 12,
-        fontWeight: "bold",
-        color: "#FFFFFF",
-        marginRight: 2,
-    },
-    dropletIcon: {
-        width: 14,
-        height: 14,
-        resizeMode: "contain",
-    },
-    specialButtonsContainer: {
-        position: "absolute",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        width: "100%",
-        top: "51%",
-        zIndex: 10,
-    },
-    specialButton: {
-        width: 45,
-        height: 45,
-        justifyContent: "center",
-        alignItems: "center",
-        marginHorizontal: 7,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 4,
-    },
-    specialButtonIcon: {
-        width: 35,
-        height: 35,
-    },
-
-    // Quick Tasks Section Styles
-    quickTasksContainer: {
-        position: "absolute",
-        top: "62%",
-        width: "90%",
-        alignSelf: "center",
-        backgroundColor: "rgba(255, 255, 255, 0.95)",
-        borderRadius: 20,
-        padding: 16,
-        zIndex: 15,
-        maxHeight: "30%",
-        ...theme.shadows.lg,
-    },
-    quickTasksHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 12,
-    },
-    quickTasksTitle: {
-        fontSize: 18,
-        fontWeight: theme.typography.weights.bold,
-        color: theme.colors.primary[900],
-        fontFamily: theme.typography.fonts.primary,
-    },
-    viewAllTasksText: {
-        fontSize: 14,
-        color: theme.colors.secondary[500],
-        fontFamily: theme.typography.fonts.primary,
-        fontWeight: theme.typography.weights.medium,
-    },
-    dashboardTaskToggle: {
-        flexDirection: "row",
-        backgroundColor: "#E8E8E8",
-        borderRadius: 15,
-        padding: 2,
+    greeting: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: theme.colors.text,
         marginBottom: 16,
-        position: "relative",
-        overflow: "hidden",
+        fontFamily: theme.fonts.bold,
     },
-    dashboardToggleHighlight: {
-        position: "absolute",
-        top: 2,
-        width: "50%",
-        height: "90%",
-        borderRadius: 13,
-        zIndex: 1,
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
-    dashboardToggleButton: {
+    statItem: {
+        alignItems: 'center',
         flex: 1,
-        paddingVertical: 8,
-        alignItems: "center",
-        zIndex: 2,
     },
-    dashboardToggleText: {
+    statValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: theme.colors.primary,
+        fontFamily: theme.fonts.bold,
+    },
+    statLabel: {
         fontSize: 12,
-        fontWeight: theme.typography.weights.medium,
-        color: theme.colors.text.muted,
-        fontFamily: theme.typography.fonts.primary,
+        color: theme.colors.textSecondary,
+        marginTop: 4,
+        fontFamily: theme.fonts.regular,
     },
-    activeToggleText: {
-        color: "#FFFFFF",
-        fontWeight: theme.typography.weights.bold,
+    statDivider: {
+        width: 1,
+        height: '100%',
+        backgroundColor: '#E0E0E0',
     },
-    dashboardTasksList: {
-        maxHeight: 180,
+    plantSection: {
+        marginHorizontal: 20,
+        marginVertical: 24,
     },
-    dashboardTaskItem: {
-        position: "relative",
-        marginBottom: 10,
-        height: 50,
-        borderRadius: 12,
-        overflow: "hidden",
+    plantBackground: {
+        borderRadius: 20,
+        padding: 20,
+        height: 320,
+        position: 'relative',
+        overflow: 'hidden',
     },
-    swipeActionsBackdrop: {
-        position: "absolute",
-        width: "100%",
-        height: "100%",
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "flex-end",
-        paddingRight: 15,
+    sunIcon: {
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        width: 60,
+        height: 60,
     },
-    dashboardSwipeActions: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
+    plantContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
     },
-    dashboardActionButton: {
-        width: 35,
-        height: 35,
-        borderRadius: 8,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
+    plant: {
+        position: 'absolute',
+        bottom: 80,
+        width: 120,
+        height: 120,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    skipActionButton: {
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
+    plantImage: {
+        width: '100%',
+        height: '100%',
     },
-    completeActionButton: {
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
+    addPlantButton: {
+        alignItems: 'center',
+        marginBottom: 40,
     },
-    actionButtonText: {
+    addPlantText: {
+        marginTop: 8,
+        fontSize: 16,
+        color: theme.colors.primary,
+        fontFamily: theme.fonts.medium,
+    },
+    pot: {
+        position: 'absolute',
+        bottom: 0,
+        width: 140,
+        height: 100,
+    },
+    plantInfo: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+    },
+    plantName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: 8,
+        fontFamily: theme.fonts.bold,
+    },
+    healthBar: {
+        height: 6,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 3,
+        overflow: 'hidden',
+        marginBottom: 4,
+    },
+    healthFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    wateringText: {
         fontSize: 12,
-        fontWeight: theme.typography.weights.bold,
-        color: theme.colors.primary[900],
+        color: theme.colors.textSecondary,
+        fontFamily: theme.fonts.regular,
     },
-    taskContent: {
-        flexDirection: "row",
-        alignItems: "center",
-        padding: 12,
+    tasksSection: {
+        marginHorizontal: 20,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        fontFamily: theme.fonts.bold,
+    },
+    seeAllText: {
+        fontSize: 14,
+        color: theme.colors.primary,
+        fontFamily: theme.fonts.medium,
+    },
+    taskItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
         borderRadius: 12,
-        backgroundColor: theme.colors.secondary[500],
-        height: "100%",
-        ...theme.shadows.sm,
+        padding: 16,
+        marginBottom: 12,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
     },
-    taskIconContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 12,
+    completedTask: {
+        opacity: 0.6,
+    },
+    overdueTask: {
+        borderColor: '#F44336',
+        borderWidth: 1,
     },
     taskIcon: {
-        width: 20,
-        height: 20,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#E8F5E9',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
     },
-    taskInfo: {
+    taskIconImage: {
+        width: 24,
+        height: 24,
+    },
+    taskContent: {
         flex: 1,
     },
-    taskTitle: {
-        fontSize: 14,
-        fontWeight: theme.typography.weights.bold,
-        color: "#FFFFFF",
-        fontFamily: theme.typography.fonts.primary,
-        marginBottom: 2,
-    },
-    taskCategory: {
-        fontSize: 11,
-        color: "rgba(255, 255, 255, 0.8)",
-        fontFamily: theme.typography.fonts.primary,
+    taskName: {
+        fontSize: 16,
+        color: theme.colors.text,
+        fontFamily: theme.fonts.medium,
     },
     taskPoints: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginRight: 8,
-    },
-    pointsIcon: {
-        width: 12,
-        height: 12,
-        marginLeft: 2,
-    },
-    favoriteButton: {
-        padding: 4,
-    },
-    favoriteIcon: {
-        fontSize: 16,
-        color: "#FFD700",
-    },
-    addTaskButton: {
-        backgroundColor: theme.colors.primary[500],
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        alignItems: "center",
-        alignSelf: "center",
-        marginTop: 8,
-    },
-    addTaskButtonText: {
         fontSize: 12,
-        fontWeight: theme.typography.weights.medium,
-        color: "#FFFFFF",
-        fontFamily: theme.typography.fonts.primary,
+        color: theme.colors.textSecondary,
+        marginTop: 2,
+        fontFamily: theme.fonts.regular,
     },
-    emptyTasksContainer: {
-        alignItems: "center",
-        paddingVertical: 20,
+    taskAction: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F5F5F5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyTasks: {
+        alignItems: 'center',
+        paddingVertical: 40,
+        backgroundColor: '#FFF',
+        borderRadius: 12,
     },
     emptyTasksText: {
-        fontSize: 14,
-        color: theme.colors.text.secondary,
-        fontFamily: theme.typography.fonts.primary,
-        marginBottom: 12,
-    },
-    createTaskButton: {
-        backgroundColor: theme.colors.secondary[500],
-        paddingHorizontal: 20,
-        paddingVertical: 8,
-        borderRadius: 16,
-    },
-    createTaskButtonText: {
-        fontSize: 12,
-        color: "#FFFFFF",
-        fontWeight: theme.typography.weights.medium,
-        fontFamily: theme.typography.fonts.primary,
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#DEDED0",
-    },
-    errorText: {
         fontSize: 16,
-        color: theme.colors.error,
-        textAlign: "center",
-        marginBottom: 20,
-        fontFamily: theme.typography.fonts.primary,
+        color: theme.colors.textSecondary,
+        marginTop: 12,
+        fontFamily: theme.fonts.regular,
     },
-    retryButton: {
-        backgroundColor: theme.colors.secondary[500],
+    addTaskButton: {
+        marginTop: 16,
         paddingHorizontal: 20,
         paddingVertical: 10,
+        backgroundColor: theme.colors.primary,
         borderRadius: 20,
     },
-    retryButtonText: {
-        color: "#FFFFFF",
+    addTaskButtonText: {
         fontSize: 14,
-        fontWeight: theme.typography.weights.medium,
-        fontFamily: theme.typography.fonts.primary,
+        color: '#FFF',
+        fontFamily: theme.fonts.medium,
+    },
+    quickActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginHorizontal: 20,
+        marginTop: 24,
+    },
+    actionButton: {
+        flex: 1,
+        marginHorizontal: 6,
+    },
+    actionGradient: {
+        paddingVertical: 20,
+        borderRadius: 16,
+        alignItems: 'center',
+    },
+    actionText: {
+        fontSize: 14,
+        color: '#FFF',
+        marginTop: 8,
+        fontFamily: theme.fonts.medium,
     },
 });

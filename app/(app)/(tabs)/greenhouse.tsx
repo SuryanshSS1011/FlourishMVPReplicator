@@ -1,972 +1,675 @@
-// app/(app)/(tabs)/greenhouse.tsx
+// app/(app)/greenhouse/index.tsx
 
 import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    TouchableOpacity,
     StyleSheet,
     ScrollView,
-    Modal,
+    TouchableOpacity,
     Image,
-    ImageBackground,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Dimensions,
 } from 'react-native';
-import * as Animatable from 'react-native-animatable';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Droplet, Heart } from 'lucide-react-native';
-import { useAuthStore } from '../../../src/store/authStore';
-import { usePlantsStore } from '../../../src/store/plantsStore';
 import { theme } from '../../../src/styles';
-import { LoadingSpinner } from '../../../src/components/ui';
-import { getGreenhouseImageSource, getUIImageSource, getBackgroundImageSource } from '../../../src/lib/utils/imageManager';
+import { plantService } from '../../../src/lib/services/plantService';
+import { storageService } from '../../../src/lib/appwrite/storage';
+import { databaseService } from '../../../src/lib/appwrite/database';
+import { useAuthStore } from '../../../src/store/authStore';
+import type { PlantWithUserData } from '../../../src/lib/services/plantService';
 
-const tabs = ['Plants', 'Accessorize', 'Nutrients'];
+const { width: screenWidth } = Dimensions.get('window');
+const GRID_SIZE = 3;
+const CELL_SIZE = (screenWidth - 60) / GRID_SIZE;
+
+interface PlantSlot {
+    position: number;
+    plant?: PlantWithUserData;
+}
 
 export default function GreenhouseScreen() {
     const { user } = useAuthStore();
-    const {
-        plants,
-        userPlants,
-        nutrients,
-        selectedPlant,
-        selectedUserPlant,
-        loading,
-        error,
-        fetchPlants,
-        fetchUserPlants,
-        fetchNutrients,
-        selectPlant,
-    } = usePlantsStore();
-
-    const [activeTab, setActiveTab] = useState('Nutrients');
-    const [showInfoPopup, setShowInfoPopup] = useState(false);
-    const [selectedNutrientImages, setSelectedNutrientImages] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [plantSlots, setPlantSlots] = useState<PlantSlot[]>([]);
+    const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+    const [showPlantModal, setShowPlantModal] = useState(false);
+    const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+    const [selectedPlant, setSelectedPlant] = useState<PlantWithUserData | null>(null);
 
     useEffect(() => {
-        if (user?.$id) {
-            fetchPlants();
-            fetchUserPlants(user.$id);
-            fetchNutrients();
-        }
-    }, [user?.$id]);
+        loadGreenhouseData();
+    }, []);
 
-    useEffect(() => {
-        // Update nutrient images based on active nutrients
-        if (selectedUserPlant?.activeNutrients) {
-            try {
-                const activeNutrients = JSON.parse(selectedUserPlant.activeNutrients);
-                const imageUrls = activeNutrients.map((activeNutrient: any) => {
-                    const nutrient = nutrients.find(n => n.$id === activeNutrient.nutrientId);
-                    return nutrient?.ima ? getNutrientImageUrl(nutrient.ima) : null;
-                }).filter(Boolean);
-                setSelectedNutrientImages(imageUrls);
-            } catch (error) {
-                console.error('Error parsing active nutrients:', error);
+    const loadGreenhouseData = async () => {
+        try {
+            setLoading(true);
+
+            // Load user's plants
+            const plantsResult = await plantService.getUserPlants();
+            const userPlants = plantsResult.success ? plantsResult.data || [] : [];
+
+            // Initialize grid slots
+            const slots: PlantSlot[] = [];
+            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                const plant = userPlants.find(p => 
+                    p.userPlant?.location === `greenhouse_${i}`
+                ) || (i < userPlants.length ? userPlants[i] : undefined);
+                
+                slots.push({
+                    position: i,
+                    plant: plant,
+                });
             }
-        }
-    }, [selectedUserPlant, nutrients]);
+            setPlantSlots(slots);
 
-    const getNutrientImageUrl = (fileId: string) => {
-        if (!fileId) return 'https://via.placeholder.com/150';
-        return `https://cloud.appwrite.io/v1/storage/buckets/67ddb9b20009978262ae/files/${fileId}/view?project=67cfa24f0031e006fba3`;
-    };
-
-    const getCactusImageUrl = (fileId: string) => {
-        if (!fileId) return 'https://via.placeholder.com/150';
-        return `https://cloud.appwrite.io/v1/storage/buckets/67e227bf00075deadffc/files/${fileId}/view?project=67cfa24f0031e006fba3`;
-    };
-
-    const formatTimer = (seconds: number | undefined) => {
-        if (!seconds) return '00:00';
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    };
-
-    const handleNutrientPress = (nutrient: any, index: number) => {
-        const colors = ['#C7A6F2', 'rgba(230, 114, 64, 0.50)', 'rgba(84, 108, 235, 0.50)', 'rgba(48, 182, 98, 0.50)'];
-
-        router.push({
-            pathname: '/(app)/greenhouse/nutrient',
-            params: {
-                nutrientId: nutrient.$id,
-                color: colors[index] || colors[0],
-                plantId: selectedPlant?.$id || '',
-                userId: user?.$id || '',
+            // Load user's selected background
+            if (user) {
+                const userResult = await databaseService.getUser(user.$id);
+                if (userResult.success && userResult.data?.preferences?.selectedBackground) {
+                    const bgUrl = storageService.getBackgroundImageUrl(
+                        userResult.data.preferences.selectedBackground
+                    );
+                    setBackgroundImage(bgUrl);
+                }
             }
-        });
+        } catch (error) {
+            console.error('Error loading greenhouse data:', error);
+            Alert.alert('Error', 'Failed to load greenhouse data');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleBackgroundPress = () => {
-        router.push('/(app)/greenhouse/backgrounds');
+    const handleSlotPress = (slot: PlantSlot) => {
+        if (slot.plant) {
+            setSelectedPlant(slot.plant);
+            setShowPlantModal(true);
+        } else {
+            setSelectedSlot(slot.position);
+            router.push({
+                pathname: '/(app)/plants/add',
+                params: { 
+                    greenhouseSlot: slot.position,
+                    returnTo: 'greenhouse'
+                }
+            });
+        }
     };
 
-    const handleVasesPress = () => {
-        router.push('/(app)/greenhouse/vases');
+    const handleWaterPlant = async () => {
+        if (!selectedPlant?.userPlant) return;
+
+        try {
+            const result = await plantService.updatePlantCare(
+                selectedPlant.userPlant.$id,
+                'water'
+            );
+
+            if (result.success) {
+                Alert.alert('Success', 'Plant watered successfully!');
+                setShowPlantModal(false);
+                loadGreenhouseData();
+            }
+        } catch (error) {
+            console.error('Error watering plant:', error);
+            Alert.alert('Error', 'Failed to water plant');
+        }
     };
 
-    const renderNutrientItem = (nutrient: any, index: number) => {
-        const activeNutrients = selectedUserPlant?.activeNutrients
-            ? JSON.parse(selectedUserPlant.activeNutrients)
-            : [];
-        const activeNutrient = activeNutrients.find((an: any) => an.nutrientId === nutrient.$id);
-        const isAppliedToPlant = !!activeNutrient;
-        const timer = activeNutrient?.timer;
-        const isPremium = nutrient.isPremium;
-        const hasTimer = timer !== undefined && timer > 0;
+    const handleRemovePlant = async () => {
+        if (!selectedPlant?.userPlant) return;
 
-        const colors = ['#C7A6F2', 'rgba(230, 114, 64, 0.50)', 'rgba(84, 108, 235, 0.50)', 'rgba(48, 182, 98, 0.50)'];
-        const backgroundColor = colors[index] || colors[0];
-
-        return (
-            <View key={nutrient.$id} style={styles.nutrientWrapper}>
-                {isPremium ? (
-                    <View style={styles.premiumContainer}>
-                        <LinearGradient
-                            colors={['#888DBE', '#FA6FB4']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.gradientBorder}
-                        >
-                            {hasTimer && isAppliedToPlant ? (
-                                <LinearGradient
-                                    colors={['#B3E8E5', '#D7CFF5']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 0, y: 1 }}
-                                    style={styles.timerGradientBorder}
-                                >
-                                    <TouchableOpacity
-                                        style={styles.nutrientItem}
-                                        onPress={() => handleNutrientPress(nutrient, index)}
-                                    >
-                                        <Image
-                                            source={{ uri: getNutrientImageUrl(nutrient.ima || '') }}
-                                            style={styles.nutrientImage}
-                                        />
-                                        <View style={[styles.nutrientLabel, { backgroundColor }]}>
-                                            <Text style={styles.nutrientText}>{nutrient.name}</Text>
-                                        </View>
-                                        {hasTimer && (
-                                            <ImageBackground
-                                                source={getGreenhouseImageSource('border')}
-                                                style={styles.timerBadge}
-                                                resizeMode="contain"
-                                            >
-                                                <Text style={styles.timerText}>{formatTimer(timer)}</Text>
-                                            </ImageBackground>
-                                        )}
-                                    </TouchableOpacity>
-                                </LinearGradient>
-                            ) : (
-                                <TouchableOpacity
-                                    style={styles.nutrientItem}
-                                    onPress={() => handleNutrientPress(nutrient, index)}
-                                >
-                                    <Image
-                                        source={{ uri: getNutrientImageUrl(nutrient.ima || '') }}
-                                        style={styles.nutrientImage}
-                                    />
-                                    <View style={[styles.nutrientLabel, { backgroundColor }]}>
-                                        <Text style={styles.nutrientText}>{nutrient.name}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            )}
-                        </LinearGradient>
-                        <Image
-                            source={getBackgroundImageSource('leafgradient')}
-                            style={styles.cornerIcon}
-                            resizeMode="contain"
-                        />
-                    </View>
-                ) : hasTimer && isAppliedToPlant ? (
-                    <LinearGradient
-                        colors={['#98FB98', '#A3D977']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 0, y: 1 }}
-                        style={styles.timerGradientBorder}
-                    >
-                        <TouchableOpacity
-                            style={styles.nutrientItem}
-                            onPress={() => handleNutrientPress(nutrient, index)}
-                        >
-                            <Image
-                                source={{ uri: getNutrientImageUrl(nutrient.ima || '') }}
-                                style={styles.nutrientImage}
-                            />
-                            <View style={[styles.nutrientLabel, { backgroundColor }]}>
-                                <Text style={styles.nutrientText}>{nutrient.name}</Text>
-                            </View>
-                            {hasTimer && (
-                                <ImageBackground
-                                    source={getGreenhouseImageSource('border')}
-                                    style={styles.timerBadge}
-                                    resizeMode="contain"
-                                >
-                                    <Text style={styles.timerText}>{formatTimer(timer)}</Text>
-                                </ImageBackground>
-                            )}
-                        </TouchableOpacity>
-                    </LinearGradient>
-                ) : (
-                    <TouchableOpacity
-                        style={styles.nutrientItem}
-                        onPress={() => handleNutrientPress(nutrient, index)}
-                    >
-                        <Image
-                            source={{ uri: getNutrientImageUrl(nutrient.ima || '') }}
-                            style={styles.nutrientImage}
-                        />
-                        <View style={[styles.nutrientLabel, { backgroundColor }]}>
-                            <Text style={styles.nutrientText}>{nutrient.name}</Text>
-                        </View>
-                    </TouchableOpacity>
-                )}
-            </View>
+        Alert.alert(
+            'Remove Plant',
+            `Are you sure you want to remove ${selectedPlant.userPlant.nickname || selectedPlant.name} from greenhouse?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await databaseService.updateUserPlant(
+                                selectedPlant.userPlant!.$id,
+                                { location: null }
+                            );
+                            setShowPlantModal(false);
+                            loadGreenhouseData();
+                        } catch (error) {
+                            Alert.alert('Error', 'Failed to remove plant');
+                        }
+                    }
+                }
+            ]
         );
     };
 
-    if (loading && plants.length === 0) {
-        return <LoadingSpinner message="Loading greenhouse..." />;
-    }
+    const renderHeader = () => (
+        <View style={styles.header}>
+            <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+            >
+                <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
 
-    if (!user) {
+            <Text style={styles.headerTitle}>Green House</Text>
+
+            <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => router.push('/(app)/greenhouse/settings')}
+            >
+                <Ionicons name="settings-outline" size={24} color="#FFF" />
+            </TouchableOpacity>
+        </View>
+    );
+
+    const renderPlantSlot = (slot: PlantSlot) => {
+        const hasPlant = !!slot.plant;
+
         return (
-            <View style={styles.container}>
-                <Text style={styles.errorText}>Please log in to access the greenhouse.</Text>
+            <TouchableOpacity
+                key={slot.position}
+                style={styles.plantSlot}
+                onPress={() => handleSlotPress(slot)}
+                activeOpacity={0.8}
+            >
+                {hasPlant ? (
+                    <View style={styles.plantContainer}>
+                        <Image
+                            source={{ 
+                                uri: slot.plant!.imageUrl || 
+                                     storageService.getPlantImageUrl('default-plant')
+                            }}
+                            style={styles.plantImage}
+                            resizeMode="contain"
+                        />
+                        <Image
+                            source={require('../../../assets/images/pot.png')}
+                            style={styles.potImage}
+                            resizeMode="contain"
+                        />
+                        <Text style={styles.plantName} numberOfLines={1}>
+                            {slot.plant!.userPlant?.nickname || slot.plant!.name}
+                        </Text>
+                    </View>
+                ) : (
+                    <View style={styles.emptySlot}>
+                        <Ionicons 
+                            name="add-circle-outline" 
+                            size={48} 
+                            color="rgba(255, 255, 255, 0.5)" 
+                        />
+                    </View>
+                )}
+            </TouchableOpacity>
+        );
+    };
+
+    const renderPlantModal = () => {
+        if (!selectedPlant) return null;
+
+        const healthStatus = selectedPlant.userPlant?.healthStatus || 'good';
+        const healthColors = {
+            excellent: '#4CAF50',
+            good: '#8BC34A',
+            fair: '#FFC107',
+            poor: '#F44336',
+        };
+
+        return (
+            <Modal
+                visible={showPlantModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowPlantModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <TouchableOpacity
+                            style={styles.modalClose}
+                            onPress={() => setShowPlantModal(false)}
+                        >
+                            <Ionicons name="close" size={24} color={theme.colors.text} />
+                        </TouchableOpacity>
+
+                        <Image
+                            source={{ 
+                                uri: selectedPlant.imageUrl || 
+                                     storageService.getPlantImageUrl('default-plant')
+                            }}
+                            style={styles.modalPlantImage}
+                            resizeMode="contain"
+                        />
+
+                        <Text style={styles.modalPlantName}>
+                            {selectedPlant.userPlant?.nickname || selectedPlant.name}
+                        </Text>
+
+                        <Text style={styles.modalPlantSpecies}>
+                            {selectedPlant.scientificName}
+                        </Text>
+
+                        <View style={styles.plantStats}>
+                            <View style={styles.statItem}>
+                                <Ionicons 
+                                    name="heart" 
+                                    size={24} 
+                                    color={healthColors[healthStatus]} 
+                                />
+                                <Text style={styles.statLabel}>Health</Text>
+                                <Text style={[
+                                    styles.statValue,
+                                    { color: healthColors[healthStatus] }
+                                ]}>
+                                    {healthStatus}
+                                </Text>
+                            </View>
+
+                            <View style={styles.statDivider} />
+
+                            <View style={styles.statItem}>
+                                <Ionicons name="water" size={24} color="#64B5F6" />
+                                <Text style={styles.statLabel}>Water</Text>
+                                <Text style={styles.statValue}>
+                                    {selectedPlant.wateringFrequency} days
+                                </Text>
+                            </View>
+
+                            <View style={styles.statDivider} />
+
+                            <View style={styles.statItem}>
+                                <Ionicons name="sunny" size={24} color="#FFD54F" />
+                                <Text style={styles.statLabel}>Light</Text>
+                                <Text style={styles.statValue}>
+                                    {selectedPlant.lightRequirement}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.waterButton]}
+                                onPress={handleWaterPlant}
+                            >
+                                <Ionicons name="water" size={20} color="#FFF" />
+                                <Text style={styles.actionButtonText}>Water Now</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.detailsButton]}
+                                onPress={() => {
+                                    setShowPlantModal(false);
+                                    router.push({
+                                        pathname: '/(app)/plants/[id]',
+                                        params: { id: selectedPlant.userPlant!.$id }
+                                    });
+                                }}
+                            >
+                                <Ionicons name="information-circle" size={20} color="#FFF" />
+                                <Text style={styles.actionButtonText}>Details</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.removeButton}
+                            onPress={handleRemovePlant}
+                        >
+                            <Text style={styles.removeButtonText}>Remove from Greenhouse</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        );
+    };
+
+    const renderQuickActions = () => (
+        <View style={styles.quickActions}>
+            <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => router.push('/(app)/greenhouse/backgrounds')}
+            >
+                <LinearGradient
+                    colors={['#9C27B0', '#7B1FA2']}
+                    style={styles.quickActionGradient}
+                >
+                    <Ionicons name="image" size={24} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.quickActionText}>Background</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => router.push('/(app)/greenhouse/vases')}
+            >
+                <LinearGradient
+                    colors={['#FF9800', '#F57C00']}
+                    style={styles.quickActionGradient}
+                >
+                    <Ionicons name="color-palette" size={24} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.quickActionText}>Vases</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => router.push('/(app)/nutrients')}
+            >
+                <LinearGradient
+                    colors={['#4CAF50', '#388E3C']}
+                    style={styles.quickActionGradient}
+                >
+                    <Ionicons name="nutrition" size={24} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.quickActionText}>Nutrients</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.quickActionButton}
+                onPress={() => router.push('/(app)/premium')}
+            >
+                <LinearGradient
+                    colors={['#FFD700', '#FFC107']}
+                    style={styles.quickActionGradient}
+                >
+                    <Ionicons name="star" size={24} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.quickActionText}>Premium</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Loading greenhouse...</Text>
             </View>
         );
     }
 
     return (
-        <LinearGradient
-            colors={[theme.colors.primary[100], theme.colors.primary[500]]}
-            style={styles.container}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-        >
-            {/* Header */}
-            <View style={styles.headerRow}>
-                <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.primary[900]} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Green House</Text>
-                <TouchableOpacity onPress={() => setShowInfoPopup(true)}>
-                    <Ionicons name="information-circle-outline" size={32} color={theme.colors.primary[900]} />
-                </TouchableOpacity>
-            </View>
+        <View style={styles.container}>
+            {backgroundImage && (
+                <Image
+                    source={{ uri: backgroundImage }}
+                    style={styles.backgroundImage}
+                    resizeMode="cover"
+                />
+            )}
+            
+            <LinearGradient
+                colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.5)']}
+                style={styles.overlay}
+            />
 
-            {/* Plant Display Container */}
-            <View style={styles.plantContainer}>
-                <ImageBackground
-                    source={getGreenhouseImageSource('sand')}
-                    style={styles.plantBackground}
-                    imageStyle={{ borderRadius: 20 }}
-                >
-                    {/* Sun Icon */}
-                    <View style={styles.sunContainer}>
-                        <Image
-                            source={getGreenhouseImageSource('sun')}
-                            style={styles.sunIcon}
-                        />
-                    </View>
+            {renderHeader()}
 
-                    {/* Plant Image */}
-                    <View style={styles.plantImageContainer}>
-                        {selectedPlant?.Image ? (
-                            <Image
-                                source={{ uri: getCactusImageUrl(selectedPlant.Image) }}
-                                style={styles.plantImage}
-                            />
-                        ) : (
-                            <View style={styles.placeholderPlant}>
-                                <Text style={styles.placeholderText}>Select a plant</Text>
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Plant Info Panel */}
-                    <View style={styles.plantInfoPanel}>
-                        {selectedPlant && selectedUserPlant ? (
-                            <>
-                                <Text style={styles.plantTitle}>{selectedPlant.PlantName}</Text>
-                                <Text style={styles.plantDate}>
-                                    {selectedUserPlant.plantedat} days ago planted
-                                </Text>
-
-                                {/* Water Level */}
-                                <View style={styles.statusContainer}>
-                                    <View style={styles.statusRow}>
-                                        <View style={styles.statusIcon}>
-                                            <Droplet size={18} color="#FFFFFF" />
-                                        </View>
-                                        <Text style={styles.statusLabel}>Water</Text>
-                                    </View>
-                                    <View style={styles.progressContainer}>
-                                        <LinearGradient
-                                            colors={['#2BE4FF', '#1681FF']}
-                                            start={{ x: 1, y: 1 }}
-                                            end={{ x: 0, y: 1 }}
-                                            style={[
-                                                styles.progressFill,
-                                                { width: `${parseInt(selectedUserPlant.waterlevel, 10) || 0}%` }
-                                            ]}
-                                        />
-                                        <Text style={styles.progressText}>
-                                            {parseInt(selectedUserPlant.waterlevel, 10) || 0}%
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                {/* Care Level */}
-                                <View style={styles.statusContainer}>
-                                    <View style={styles.statusRow}>
-                                        <View style={styles.statusIcon}>
-                                            <Heart size={18} color="#FFFFFF" />
-                                        </View>
-                                        <Text style={styles.statusLabel}>Care</Text>
-                                    </View>
-                                    <View style={styles.progressContainer}>
-                                        <LinearGradient
-                                            colors={['#FFFFFF', '#E26310']}
-                                            start={{ x: 1, y: 1 }}
-                                            end={{ x: 0, y: 1 }}
-                                            style={[
-                                                styles.progressFill,
-                                                { width: `${parseInt(selectedUserPlant.carelevel, 10) || 0}%` }
-                                            ]}
-                                        />
-                                        <Text style={styles.progressText}>
-                                            {parseInt(selectedUserPlant.carelevel, 10) || 0}%
-                                        </Text>
-                                    </View>
-                                </View>
-                            </>
-                        ) : (
-                            <Text style={styles.placeholderText}>No plant selected</Text>
-                        )}
-
-                        {/* Level and Active Nutrients */}
-                        <View style={styles.badgeContainer}>
-                            <View style={styles.levelBadge}>
-                                <Text style={styles.levelText}>Lv: 10</Text>
-                            </View>
-                            {selectedNutrientImages.length > 0 && (
-                                <View style={styles.nutrientBadgesContainer}>
-                                    {selectedNutrientImages.map((imageUrl, index) => (
-                                        <ImageBackground
-                                            key={index}
-                                            source={getGreenhouseImageSource('border')}
-                                            style={styles.nutrientBadge}
-                                            resizeMode="contain"
-                                        >
-                                            <Image
-                                                source={{ uri: imageUrl }}
-                                                style={styles.nutrientIcon}
-                                                resizeMode="contain"
-                                            />
-                                        </ImageBackground>
-                                    ))}
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                </ImageBackground>
-            </View>
-
-            {/* Tab Container */}
-            <View style={styles.tabContainer}>
-                {tabs.map((tab) => (
-                    <TouchableOpacity
-                        key={tab}
-                        onPress={() => setActiveTab(tab)}
-                        style={[styles.tabButton, activeTab === tab && styles.activeTab]}
-                    >
-                        <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                            {tab}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            {/* Content Container */}
-            <View style={styles.contentContainer}>
-                <ScrollView
-                    style={styles.scrollView}
-                    contentContainerStyle={styles.scrollContainer}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <Animatable.View animation="fadeInUp" duration={500} key={activeTab}>
-                        {activeTab === 'Plants' && (
-                            <View style={styles.itemGrid}>
-                                {plants.slice(0, 4).map((plant, index) => (
-                                    <TouchableOpacity
-                                        key={plant.$id}
-                                        style={styles.itemCard}
-                                        onPress={() => selectPlant(plant)}
-                                    >
-                                        <Image
-                                            source={{ uri: getCactusImageUrl(plant.Image || '') }}
-                                            style={styles.itemImage}
-                                        />
-                                        <View style={styles.itemLabel}>
-                                            <Text style={styles.itemText}>{plant.PlantName}</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        )}
-
-                        {activeTab === 'Accessorize' && (
-                            <View style={styles.itemGrid}>
-                                <TouchableOpacity style={styles.itemCard} onPress={handleBackgroundPress}>
-                                    <Image
-                                        source={getGreenhouseImageSource('brick-background')}
-                                        style={styles.itemImage}
-                                    />
-                                    <View style={styles.itemLabel}>
-                                        <Text style={styles.itemText}>Background</Text>
-                                    </View>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.itemCard} onPress={handleVasesPress}>
-                                    <Image
-                                        source={getGreenhouseImageSource('vase')}
-                                        style={styles.itemImage}
-                                    />
-                                    <View style={styles.itemLabel}>
-                                        <Text style={styles.itemText}>Vases</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        {activeTab === 'Nutrients' && (
-                            <View style={styles.nutrientGrid}>
-                                <View style={styles.nutrientRow}>
-                                    {nutrients.slice(0, 2).map((nutrient, index) =>
-                                        renderNutrientItem(nutrient, index)
-                                    )}
-                                </View>
-                                <View style={styles.nutrientRow}>
-                                    {nutrients.slice(2, 4).map((nutrient, index) =>
-                                        renderNutrientItem(nutrient, index + 2)
-                                    )}
-                                </View>
-                            </View>
-                        )}
-                    </Animatable.View>
-                </ScrollView>
-            </View>
-
-            {/* Info Modal */}
-            <Modal
-                visible={showInfoPopup}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setShowInfoPopup(false)}
+            <ScrollView 
+                style={styles.content}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalHeader}>
-                            <LinearGradient
-                                colors={['#a6c29f', '#56817c']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.gradientHeader}
-                            />
-                            <View style={styles.modalIconWrapper}>
-                                <Image
-                                    source={getGreenhouseImageSource('Flourish-logo')}
-                                    style={styles.modalIcon}
-                                />
-                            </View>
-                        </View>
-                        <Text style={styles.modalTitle}>Green House</Text>
-                        <Text style={styles.modalDescription}>
-                            The greenhouse is where you can store your plants, level them up, customize their
-                            vase and background, and provide nutrients to help them grow.
-                        </Text>
-                        <View style={styles.modalButtonRow}>
-                            <TouchableOpacity onPress={() => setShowInfoPopup(false)}>
-                                <LinearGradient
-                                    colors={['#a6c29f', '#56817c']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.modalButton}
-                                >
-                                    <Text style={styles.modalButtonText}>Got it</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.modalCloseButton}
-                                onPress={() => setShowInfoPopup(false)}
-                            >
-                                <Text style={styles.modalCloseButtonText}>Close</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                <View style={styles.greenhouseGrid}>
+                    {plantSlots.map(renderPlantSlot)}
                 </View>
-            </Modal>
-        </LinearGradient>
+
+                {renderQuickActions()}
+            </ScrollView>
+
+            {renderPlantModal()}
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#1A1A1A',
     },
-    headerRow: {
+    backgroundImage: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+    },
+    overlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: theme.colors.background,
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 16,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.fonts.regular,
+    },
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-        position: 'absolute',
-        top: 40,
+        paddingTop: 60,
+        paddingBottom: 20,
         paddingHorizontal: 20,
         zIndex: 10,
     },
-    iconButton: {
-        padding: 10,
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     headerTitle: {
-        color: theme.colors.primary[900],
-        fontSize: 28,
-        fontFamily: theme.typography.fonts.primary,
-        fontWeight: theme.typography.weights.bold,
+        flex: 1,
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFF',
         textAlign: 'center',
+        fontFamily: theme.fonts.bold,
     },
-    plantContainer: {
-        marginTop: 100,
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '90%',
-        height: 233,
-        alignSelf: 'center',
+    settingsButton: {
+        width: 40,
+        height: 40,
         borderRadius: 20,
-        overflow: 'hidden',
-        ...theme.shadows.md,
-    },
-    plantBackground: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 20,
-        overflow: 'hidden',
-    },
-    sunContainer: {
-        position: 'absolute',
-        left: 20,
-        top: 10,
-        width: 35,
-        height: 35,
-        borderRadius: 40,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...theme.shadows.md,
-    },
-    sunIcon: {
-        width: 30,
-        height: 30,
-    },
-    plantImageContainer: {
-        position: 'absolute',
-        left: 20,
-        top: '50%',
-        transform: [{ translateY: -72 }],
-    },
-    plantImage: {
-        width: 148,
-        height: 145,
-        borderRadius: 29,
-    },
-    placeholderPlant: {
-        width: 148,
-        height: 145,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        borderRadius: 29,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    placeholderText: {
-        color: theme.colors.text.muted,
-        fontSize: theme.typography.sizes.base,
-        fontFamily: theme.typography.fonts.primary,
+    content: {
+        flex: 1,
+        zIndex: 5,
     },
-    plantInfoPanel: {
-        width: 194,
-        backgroundColor: 'rgba(255, 255, 255, 0.60)',
-        borderRadius: 20,
-        position: 'absolute',
-        right: 15,
-        top: 70,
-        padding: 16,
-        ...theme.shadows.md,
+    contentContainer: {
+        paddingHorizontal: 20,
+        paddingBottom: 100,
     },
-    plantTitle: {
-        color: '#56AB2F',
-        fontSize: 15,
-        fontFamily: theme.typography.fonts.primary,
-        fontWeight: theme.typography.weights.semibold,
-        textAlign: 'center',
+    greenhouseGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
         marginTop: 20,
     },
-    plantDate: {
-        color: '#999999',
-        fontSize: 10,
-        fontFamily: theme.typography.fonts.primary,
+    plantSlot: {
+        width: CELL_SIZE,
+        height: CELL_SIZE,
+        marginBottom: 20,
+    },
+    plantContainer: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    plantImage: {
+        width: '60%',
+        height: '50%',
+        marginBottom: -10,
+        zIndex: 2,
+    },
+    potImage: {
+        width: '80%',
+        height: '40%',
+        zIndex: 1,
+    },
+    plantName: {
+        fontSize: 12,
+        color: '#FFF',
+        marginTop: 4,
+        fontFamily: theme.fonts.medium,
         textAlign: 'center',
-        marginTop: 8,
     },
-    statusContainer: {
-        backgroundColor: 'white',
-        borderRadius: 15,
-        padding: 12,
-        marginTop: 8,
+    emptySlot: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
-    statusRow: {
+    quickActions: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 40,
+    },
+    quickActionButton: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    quickActionGradient: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 8,
     },
-    statusIcon: {
-        width: 30,
-        height: 30,
-        backgroundColor: '#B4E49E',
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 8,
-    },
-    statusLabel: {
-        color: theme.colors.primary[900],
-        fontSize: 14,
-        fontFamily: theme.typography.fonts.primary,
-        fontWeight: theme.typography.weights.medium,
-    },
-    progressContainer: {
-        width: '100%',
-        height: 13,
-        backgroundColor: '#F3F3F3',
-        borderRadius: 10,
-        position: 'relative',
-        ...theme.shadows.sm,
-    },
-    progressFill: {
-        height: '100%',
-        borderRadius: 10,
-    },
-    progressText: {
-        position: 'absolute',
-        right: 8,
-        top: -2,
+    quickActionText: {
         fontSize: 12,
-        color: 'white',
-        fontFamily: theme.typography.fonts.primary,
-        fontWeight: theme.typography.weights.bold,
-    },
-    badgeContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 16,
-    },
-    levelBadge: {
-        backgroundColor: theme.colors.secondary[500],
-        borderRadius: 10,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-    },
-    levelText: {
-        color: 'white',
-        fontWeight: theme.typography.weights.bold,
-        fontSize: theme.typography.sizes.sm,
-        fontFamily: theme.typography.fonts.primary,
-    },
-    nutrientBadgesContainer: {
-        flexDirectio: 'row',
-        marginLeft: 10,
-    },
-    nutrientBadge: {
-        width: 30,
-        height: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 5,
-    },
-    nutrientIcon: {
-        width: 20,
-        height: 20,
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-        paddingHorizontal: 0,
-        borderRadius: 20,
-        height: 50,
-        width: '90%',
-        alignSelf: 'center',
-        marginTop: 35,
-        ...theme.shadows.md,
-    },
-    tabButton: {
-        flex: 1,
-        height: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    activeTab: {
-        backgroundColor: '#A3D977',
-        borderRadius: 20,
-    },
-    tabText: {
-        fontSize: 16,
-        color: '#A0A0A0',
-        fontFamily: theme.typography.fonts.primary,
-    },
-    activeTabText: {
-        color: 'white',
-        fontWeight: theme.typography.weights.bold,
-    },
-    contentContainer: {
-        flex: 1,
-        marginTop: 20,
-        backgroundColor: '#F3EFED',
-        borderTopLeftRadius: 40,
-        borderTopRightRadius: 40,
-    },
-    scrollView: {
-        flex: 1,
-        marginTop: 10,
-    },
-    scrollContainer: {
-        flexGrow: 1,
-        paddingHorizontal: 20,
-        paddingBottom: 50,
-    },
-    itemGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-around',
-        marginTop: 20,
-    },
-    itemCard: {
-        width: 156,
-        height: 162,
-        backgroundColor: '#FFF',
-        borderRadius: 13,
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        marginBottom: 16,
-        paddingTop: 30,
-        ...theme.shadows.md,
-    },
-    itemImage: {
-        width: 100,
-        height: 100,
-        resizeMode: 'contain',
-    },
-    itemLabel: {
-        width: '100%',
-        height: 32,
-        backgroundColor: '#A3D977',
-        borderBottomLeftRadius: 13,
-        borderBottomRightRadius: 13,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...theme.shadows.sm,
-    },
-    itemText: {
-        color: '#30459D',
-        textAlign: 'center',
-        fontFamily: theme.typography.fonts.system,
-        fontSize: 16,
-        fontWeight: theme.typography.weights.medium,
-    },
-    nutrientGrid: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    nutrientRow: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 20,
-        marginBottom: 16,
-    },
-    nutrientWrapper: {
-        backgroundColor: 'transparent',
-    },
-    premiumContainer: {
-        position: 'relative',
-    },
-    gradientBorder: {
-        width: 160,
-        height: 166,
-        borderRadius: 15,
-        padding: 2,
-    },
-    timerGradientBorder: {
-        width: 156,
-        height: 162,
-        borderRadius: 13,
-        padding: 2,
-    },
-    nutrientItem: {
-        width: 156,
-        height: 162,
-        backgroundColor: '#FFF',
-        borderRadius: 13,
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        paddingTop: 30,
-        position: 'relative',
-        ...theme.shadows.md,
-    },
-    nutrientImage: {
-        width: 100,
-        height: 100,
-        resizeMode: 'contain',
-        transform: [{ scale: 1.4 }],
-    },
-    nutrientLabel: {
-        width: '100%',
-        height: 32,
-        borderBottomLeftRadius: 13,
-        borderBottomRightRadius: 13,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    nutrientText: {
-        color: '#30459D',
-        textAlign: 'center',
-        fontFamily: theme.typography.fonts.system,
-        fontSize: 16,
-        fontWeight: theme.typography.weights.medium,
-    },
-    cornerIcon: {
-        position: 'absolute',
-        top: 5,
-        right: 5,
-        width: 30,
-        height: 30,
-        zIndex: 10,
-    },
-    timerBadge: {
-        position: 'absolute',
-        top: 5,
-        right: 5,
-        width: 30,
-        height: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    timerText: {
-        color: '#2B8761',
-        fontSize: 8,
-        fontWeight: theme.typography.weights.bold,
-        fontFamily: theme.typography.fonts.primary,
-        textAlign: 'center',
+        color: '#FFF',
+        fontFamily: theme.fonts.medium,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        padding: 24,
+        paddingBottom: 40,
         alignItems: 'center',
     },
-    modalContainer: {
-        width: 338,
-        height: 320,
-        borderRadius: 20,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        paddingTop: 10,
-        paddingBottom: 20,
-    },
-    modalHeader: {
-        width: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 20,
-    },
-    gradientHeader: {
-        width: '100%',
-        height: 62,
-        borderTopLeftRadius: 15,
-        borderTopRightRadius: 15,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalIconWrapper: {
+    modalClose: {
         position: 'absolute',
-        top: -30,
-        alignSelf: 'center',
+        top: 20,
+        right: 20,
         zIndex: 10,
     },
-    modalIcon: {
-        width: 70,
-        height: 70,
-        resizeMode: 'contain',
-        borderRadius: 14,
-        ...theme.shadows.lg,
+    modalPlantImage: {
+        width: 150,
+        height: 150,
+        marginBottom: 16,
     },
-    modalTitle: {
-        fontSize: 28,
-        fontFamily: theme.typography.fonts.primary,
-        fontWeight: theme.typography.weights.normal,
-        textAlign: 'center',
-        marginBottom: 20,
+    modalPlantName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: 4,
+        fontFamily: theme.fonts.bold,
     },
-    modalDescription: {
-        fontFamily: theme.typography.fonts.system,
+    modalPlantSpecies: {
+        fontSize: 16,
+        color: theme.colors.textSecondary,
+        fontStyle: 'italic',
+        marginBottom: 24,
+        fontFamily: theme.fonts.regular,
+    },
+    plantStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        paddingVertical: 20,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#E0E0E0',
+        marginBottom: 24,
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statLabel: {
         fontSize: 12,
-        lineHeight: 25,
-        textAlign: 'center',
-        color: '#30459D',
-        marginVertical: 15,
-        paddingHorizontal: 20,
+        color: theme.colors.textSecondary,
+        marginTop: 4,
+        fontFamily: theme.fonts.regular,
     },
-    modalButtonRow: {
+    statValue: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginTop: 2,
+        fontFamily: theme.fonts.bold,
+    },
+    statDivider: {
+        width: 1,
+        height: '100%',
+        backgroundColor: '#E0E0E0',
+    },
+    modalActions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '80%',
-        marginTop: 20,
+        width: '100%',
+        marginBottom: 16,
     },
-    modalButton: {
-        width: 130,
-        height: 40,
-        borderRadius: 10,
+    actionButton: {
+        flex: 1,
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        ...theme.shadows.md,
+        paddingVertical: 12,
+        borderRadius: 25,
+        marginHorizontal: 8,
     },
-    modalButtonText: {
+    waterButton: {
+        backgroundColor: '#64B5F6',
+    },
+    detailsButton: {
+        backgroundColor: theme.colors.primary,
+    },
+    actionButtonText: {
+        fontSize: 16,
         color: '#FFF',
-        fontSize: 16,
-        fontWeight: theme.typography.weights.medium,
-        textAlign: 'center',
+        marginLeft: 8,
+        fontFamily: theme.fonts.medium,
     },
-    modalCloseButton: {
-        backgroundColor: '#D9D9D9',
-        width: 130,
-        height: 40,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...theme.shadows.md,
+    removeButton: {
+        paddingVertical: 12,
     },
-    modalCloseButtonText: {
-        color: '#749989',
-        fontSize: 16,
-        fontWeight: theme.typography.weights.medium,
-        textAlign: 'center',
-    },
-    errorText: {
-        fontSize: 16,
-        color: theme.colors.error,
-        textAlign: 'center',
-        marginTop: 20,
-        fontFamily: theme.typography.fonts.primary,
+    removeButtonText: {
+        fontSize: 14,
+        color: '#F44336',
+        fontFamily: theme.fonts.medium,
     },
 });

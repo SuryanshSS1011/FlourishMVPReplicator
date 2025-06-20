@@ -38,7 +38,7 @@ export default function ForgotPasswordScreen() {
 
         setLoading(true);
         try {
-            const result = await authService.sendPasswordRecovery(email);
+            const result = await authService.recoverPassword(email);
 
             if (result.success) {
                 setEmailSent(true);
