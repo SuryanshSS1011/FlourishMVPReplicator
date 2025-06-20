@@ -2,6 +2,7 @@
 
 import { ID, Query } from 'react-native-appwrite';
 import { appwriteService, APPWRITE_CONFIG } from './config';
+import { storageService } from './storage';
 import type { Task, TaskDetail, Suggestion, ApiResponse, TaskFormData } from '../../types';
 
 class TaskService {
@@ -278,7 +279,7 @@ class TaskService {
 
             // Create file from URI
             const response = await this.storage.createFile(
-                APPWRITE_CONFIG.buckets.images,
+                APPWRITE_CONFIG.buckets.taskImages,
                 fileId,
                 {
                     uri: file.uri,
@@ -306,7 +307,7 @@ class TaskService {
      * Get task icon URL
      */
     getTaskIconUrl(fileId: string): string {
-        return appwriteService.getFileUrl(APPWRITE_CONFIG.buckets.images, fileId);
+        return storageService.getFileUrl(APPWRITE_CONFIG.buckets.taskImages, fileId);
     }
 }
 

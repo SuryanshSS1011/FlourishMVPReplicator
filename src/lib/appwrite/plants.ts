@@ -1,6 +1,7 @@
 // src/lib/appwrite/plants.ts
 import { ID, Query } from 'react-native-appwrite';
 import { appwriteService, APPWRITE_CONFIG } from './config';
+import { storageService } from './storage';
 import type { Plant, UserPlant, Nutrient, ActiveNutrient, ApiResponse } from '../../types';
 
 class PlantService {
@@ -334,14 +335,14 @@ class PlantService {
      * Get plant image URL
      */
     getPlantImageUrl(fileId: string): string {
-        return appwriteService.getFileUrl(APPWRITE_CONFIG.buckets.images, fileId);
+        return storageService.getFileUrl(APPWRITE_CONFIG.buckets.plantImages, fileId);
     }
 
     /**
      * Get nutrient image URL
      */
     getNutrientImageUrl(fileId: string): string {
-        return appwriteService.getFileUrl(APPWRITE_CONFIG.buckets.nutrients, fileId);
+        return storageService.getFileUrl(APPWRITE_CONFIG.buckets.nutrientImages, fileId);
     }
 }
 

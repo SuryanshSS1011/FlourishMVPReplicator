@@ -55,25 +55,39 @@ export const APPWRITE_CONFIG = {
 } as const;
 
 // Validation function to ensure all required environment variables are set
-export const validateAppwriteConfig = (): { isValid: boolean; missingVars: string[] } => {
-    const requiredVars = [
+export const validateAppwriteConfig = (): { isValid: boolean; missingVars: string[]; warnings: string[] } => {
+    const criticalVars = [
         'EXPO_PUBLIC_APPWRITE_PROJECT_ID',
         'EXPO_PUBLIC_DATABASE_ID',
+    ];
+
+    const requiredVars = [
         'EXPO_PUBLIC_USERS_COLLECTION_ID',
-        'EXPO_PUBLIC_PLANTS_COLLECTION_ID',
+        'EXPO_PUBLIC_PLANTS_COLLECTION_ID', 
         'EXPO_PUBLIC_USER_PLANTS_COLLECTION_ID',
         'EXPO_PUBLIC_NUTRIENTS_COLLECTION_ID',
         'EXPO_PUBLIC_TASKS_COLLECTION_ID',
         'EXPO_PUBLIC_TASK_DETAILS_COLLECTION_ID',
-        'EXPO_PUBLIC_PLANT_IMAGES_BUCKET_ID',
-        'EXPO_PUBLIC_NUTRIENT_IMAGES_BUCKET_ID',
     ];
 
-    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    const bucketVars = [
+        'EXPO_PUBLIC_PLANT_IMAGES_BUCKET_ID',
+        'EXPO_PUBLIC_NUTRIENT_IMAGES_BUCKET_ID',
+        'EXPO_PUBLIC_TASK_IMAGES_BUCKET_ID',
+        'EXPO_PUBLIC_USER_AVATARS_BUCKET_ID',
+    ];
+
+    const missingCritical = criticalVars.filter(varName => !process.env[varName]);
+    const missingRequired = requiredVars.filter(varName => !process.env[varName]);
+    const missingBuckets = bucketVars.filter(varName => !process.env[varName]);
+    
+    const missingVars = [...missingCritical, ...missingRequired];
+    const warnings = missingBuckets.length > 0 ? [`Missing bucket IDs: ${missingBuckets.join(', ')}`] : [];
     
     return {
-        isValid: missingVars.length === 0,
+        isValid: missingCritical.length === 0 && missingRequired.length === 0,
         missingVars,
+        warnings,
     };
 };
 
@@ -88,9 +102,14 @@ class AppwriteService {
         // Validate configuration on initialization
         const validation = validateAppwriteConfig();
         if (!validation.isValid) {
-            console.warn('Missing Appwrite environment variables:', validation.missingVars);
+            console.error('Missing critical Appwrite environment variables:', validation.missingVars);
+            console.error('Please check your .env file and ensure all required variables are set.');
+        }
+        if (validation.warnings.length > 0) {
+            console.warn('Appwrite configuration warnings:', validation.warnings);
         }
 
+        // Initialize client even if some vars are missing for development
         this.client = new Client()
             .setEndpoint(APPWRITE_CONFIG.endpoint)
             .setProject(APPWRITE_CONFIG.projectId)
@@ -107,26 +126,29 @@ class AppwriteService {
     get storageService() { return this.storage; }
     get clientService() { return this.client; }
 
-    // Session management
+    // Session management - improved with better error handling
     async initializeSession(): Promise<{ success: boolean; session?: any; error?: string }> {
         try {
             const session = await this.account.getSession('current');
             console.log('Existing session found:', session.$id);
             return { success: true, session };
         } catch (error: any) {
-            if (error.code === 401) {
-                console.log('No session found, creating anonymous session...');
-                try {
-                    const newSession = await this.account.createAnonymousSession();
-                    console.log('Anonymous session created:', newSession.$id);
-                    return { success: true, session: newSession };
-                } catch (sessionError: any) {
-                    console.error('Failed to create session:', sessionError);
-                    return { success: false, error: sessionError.message };
-                }
+            if (error.code === 401 || error.code === 404) {
+                console.log('No valid session found. User needs to authenticate.');
+                return { success: false, error: 'No active session' };
             }
             console.error('Session initialization error:', error);
             return { success: false, error: error.message };
+        }
+    }
+
+    // Check session without creating anonymous session
+    async checkExistingSession(): Promise<{ success: boolean; session?: any; error?: string }> {
+        try {
+            const session = await this.account.getSession('current');
+            return { success: true, session };
+        } catch (error: any) {
+            return { success: false, error: 'No active session' };
         }
     }
 
