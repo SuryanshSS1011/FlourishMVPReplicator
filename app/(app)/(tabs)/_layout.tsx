@@ -2,7 +2,20 @@
 import { Tabs } from 'expo-router';
 import { Image } from 'react-native';
 import { theme } from '../../../src/styles';
-import { getUIImageSource } from '../../../src/lib/utils/imageManager';
+
+// Placeholder function for UI images
+const getUIImageSource = (imageName: string) => {
+  // Return placeholder/dummy images for now
+  const placeholders: Record<string, any> = {
+    'home-icon': { uri: 'https://via.placeholder.com/25x25/4CAF50/FFFFFF?text=🏠' },
+    'home2': { uri: 'https://via.placeholder.com/25x25/4CAF50/FFFFFF?text=🌿' },
+    'garden': { uri: 'https://via.placeholder.com/25x25/4CAF50/FFFFFF?text=🌸' },
+    'shop': { uri: 'https://via.placeholder.com/25x25/4CAF50/FFFFFF?text=🛒' },
+    'encyclopedia': { uri: 'https://via.placeholder.com/25x25/4CAF50/FFFFFF?text=📚' },
+  };
+  
+  return placeholders[imageName] || { uri: 'https://via.placeholder.com/25x25/4CAF50/FFFFFF?text=?' };
+};
 
 export default function TabLayout() {
   return (
