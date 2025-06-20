@@ -60,10 +60,8 @@ export const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
 
     const loadFonts = async () => {
         await Font.loadAsync({
-            'Poppins-Regular': require('../../assets/fonts/Poppins-Regular.ttf'),
-            'Poppins-Medium': require('../../assets/fonts/Poppins-Medium.ttf'),
-            'Poppins-Bold': require('../../assets/fonts/Poppins-Bold.ttf'),
-            'Poppins-Light': require('../../assets/fonts/Poppins-Light.ttf'),
+            'Roboto': require('../../assets/fonts/Roboto-Regular.ttf'),
+            'Roboto-Bold': require('../../assets/fonts/Roboto-Bold.ttf'),
         });
     };
 
