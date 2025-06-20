@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { theme } from '../../src/styles';
-import { getPremiumImageSource, getUIImageSource } from '../../src/lib/utils/imageManager';
 
 const { width } = Dimensions.get('window');
 
@@ -70,7 +69,7 @@ export default function PremiumScreen() {
             <View style={styles.headerWrapper}>
                 <View style={styles.headerContainer}>
                     <ImageBackground
-                        source={getPremiumImageSource('premium-background')}
+                        source={{ uri: 'https://via.placeholder.com/400x200/68A1A1/FFFFFF?text=Premium+Background' }}
                         style={styles.backgroundImage}
                         resizeMode="cover"
                     >
@@ -82,7 +81,7 @@ export default function PremiumScreen() {
                         >
                             <View style={styles.headerContent}>
                                 <Image
-                                    source={getPremiumImageSource('leafff')}
+                                    source={{ uri: 'https://via.placeholder.com/60x60/4CAF50/FFFFFF?text=🍃' }}
                                     style={styles.headerImage}
                                     resizeMode="contain"
                                 />
@@ -125,7 +124,7 @@ export default function PremiumScreen() {
                 <View style={styles.welcomeHeaderWrapper}>
                     <View style={styles.welcomeHeaderContainer}>
                         <ImageBackground
-                            source={getPremiumImageSource('premium-background')}
+                            source={{ uri: 'https://via.placeholder.com/400x200/68A1A1/FFFFFF?text=Premium+Background' }}
                             style={styles.welcomeBackgroundImage}
                             resizeMode="cover"
                         >
@@ -137,7 +136,7 @@ export default function PremiumScreen() {
                             >
                                 <View style={styles.welcomeContainer}>
                                     <Image
-                                        source={getPremiumImageSource('welcome-plant')}
+                                        source={{ uri: 'https://via.placeholder.com/80x120/4CAF50/FFFFFF?text=🌱' }}
                                         style={styles.plantImage}
                                         resizeMode="contain"
                                     />
