@@ -1,26 +1,26 @@
 // app/(auth)/login.tsx
 
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
+    ActivityIndicator,
+    Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Image,
-    Alert,
-    ActivityIndicator,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { Link, router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../src/store/authStore';
-import { theme } from '../../src/styles';
 import { OAuthProvider } from 'react-native-appwrite';
 import { authService } from '../../src/lib/appwrite/auth';
+import { useAuthStore } from '../../src/store/authStore';
+import { theme } from '../../src/styles';
 
 export default function LoginScreen() {
     const { login, clearError } = useAuthStore();
@@ -79,15 +79,14 @@ export default function LoginScreen() {
                 } else {
                     router.replace('/onboarding');
                 }
+            }
+            else if (result.message.includes('Invalid credentials') || result.message.includes('Invalid email or password')) {
+                Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+            }
+            else if (result.message.includes('User not found')) {
+                Alert.alert('Login Failed', 'No account found with this email. Please sign up first.');
             } else {
-                // Show specific error message
-                if (result.message.includes('Invalid credentials') || result.message.includes('Invalid email or password')) {
-                    Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
-                } else if (result.message.includes('User not found')) {
-                    Alert.alert('Login Failed', 'No account found with this email. Please sign up first.');
-                } else {
-                    Alert.alert('Login Failed', result.message);
-                }
+                Alert.alert('Login Failed', result.message);
             }
         } catch {
             Alert.alert('Error', 'An unexpected error occurred. Please try again.');
@@ -129,7 +128,7 @@ export default function LoginScreen() {
                 {/* Logo Section */}
                 <View style={styles.logoSection}>
                     <Image
-                        source={require('../../assets/images/flourish-logo.png')}
+                        source={require('../../assets/images/icon.png')}
                         style={styles.logo}
                         resizeMode="contain"
                     />
