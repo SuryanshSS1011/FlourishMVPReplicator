@@ -198,7 +198,7 @@ export default function GreenhouseScreen() {
                             resizeMode="contain"
                         />
                         <Image
-                            source={require('../../../assets/images/pot.png')}
+                            source={{ uri: storageService.getFileView('dashboardAssets', 'pot') }}
                             style={styles.potImage}
                             resizeMode="contain"
                         />

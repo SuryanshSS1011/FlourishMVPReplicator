@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { OAuthProvider } from 'react-native-appwrite';
 import { authService } from '../../src/lib/appwrite/auth';
+import { storageService } from '../../src/lib/appwrite/storage';
 import { useAuthStore } from '../../src/store/authStore';
 import { theme } from '../../src/styles';
 
@@ -128,7 +129,7 @@ export default function LoginScreen() {
                 {/* Logo Section */}
                 <View style={styles.logoSection}>
                     <Image
-                        source={require('../../assets/images/icon.png')}
+                        source={{ uri: storageService.getFileView('preLoginAssets', 'flourish-logo') }}
                         style={styles.logo}
                         resizeMode="contain"
                     />
@@ -239,7 +240,7 @@ export default function LoginScreen() {
                             disabled={loading}
                         >
                             <Image
-                                source={require('../../assets/images/google-icon.png')}
+                                source={{ uri: storageService.getFileView('preLoginAssets', 'google-icon') }}
                                 style={styles.socialIcon}
                             />
                             <Text style={styles.socialButtonText}>Login with Google</Text>

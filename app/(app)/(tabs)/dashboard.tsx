@@ -23,6 +23,7 @@ import { useAuthStore } from '../../../src/store/authStore';
 import { plantService } from '../../../src/lib/services/plantService';
 import { taskService } from '../../../src/lib/services/taskService';
 import { avatarService } from '../../../src/lib/appwrite/avatars';
+import { storageService } from '../../../src/lib/appwrite/storage';
 import type { PlantWithUserData } from '../../../src/lib/services/plantService';
 import type { TaskWithDetails, TaskStats } from '../../../src/lib/services/taskService';
 
@@ -145,8 +146,8 @@ export default function DashboardScreen() {
         if (dashboardData.mainPlant?.imageUrl) {
             return { uri: dashboardData.mainPlant.imageUrl };
         }
-        // Return default plant image
-        return require('../../../../assets/images/default-plant.png');
+        // Return default plant image from Appwrite storage
+        return { uri: storageService.getPlantImageUrl('default-plant') };
     };
 
     const getPlantSizeStyle = () => {
@@ -244,7 +245,7 @@ export default function DashboardScreen() {
 
                     {/* Pot */}
                     <Image
-                        source={require('../../../../assets/images/pot.png')}
+                        source={{ uri: storageService.getFileView('dashboardAssets', 'pot') }}
                         style={styles.pot}
                         resizeMode="contain"
                     />
