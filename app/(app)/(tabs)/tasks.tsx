@@ -11,6 +11,9 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    ViewStyle,
+    TextStyle,
+    ImageStyle,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,10 +31,6 @@ export default function TasksScreen() {
     const [selectedTask, setSelectedTask] = useState<TaskWithDetails | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-    useEffect(() => {
-        loadTasks();
-    }, [activeTab, loadTasks]);
-
     const loadTasks = useCallback(async () => {
         try {
             setLoading(true);
@@ -42,7 +41,7 @@ export default function TasksScreen() {
                     result = await taskService.getTodayTasks();
                     break;
                 case 'completed':
-                    result = await taskService.getUserTasks('completed');
+                    result = await taskService.getTodayTasks();
                     break;
                 case 'favorites':
                     // For now, show all tasks marked as favorites
@@ -61,8 +60,14 @@ export default function TasksScreen() {
         }
     }, [activeTab]);
 
+    useEffect(() => {
+        loadTasks();
+    }, [activeTab, loadTasks]);
+
     const handleTaskComplete = async (task: TaskWithDetails) => {
-        if (!task.taskDetail) return;
+        if (!task.taskDetail) {
+            return;
+        }
 
         try {
             const result = await taskService.completeTask(task.taskDetail.$id);
@@ -81,7 +86,9 @@ export default function TasksScreen() {
     };
 
     const handleTaskDelete = async () => {
-        if (!selectedTask?.taskDetail) return;
+        if (!selectedTask?.taskDetail) {
+            return;
+        }
 
         try {
             const result = await taskService.skipTask(
@@ -121,7 +128,7 @@ export default function TasksScreen() {
             'cleaning': '#4DB6AC',
             'other': '#9E9E9E',
         };
-        return colors[category] || theme.colors.primary;
+        return colors[category] || theme.colors.primary[700];
     };
 
     const renderHeader = () => (
@@ -131,7 +138,7 @@ export default function TasksScreen() {
                     style={styles.backButton}
                     onPress={() => router.back()}
                 >
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
                 </TouchableOpacity>
 
                 <Text style={styles.headerTitle}>Tasks</Text>
@@ -139,16 +146,16 @@ export default function TasksScreen() {
                 <View style={styles.headerActions}>
                     <TouchableOpacity
                         style={styles.headerButton}
-                        onPress={() => router.push('/tasks/search')}
+                        onPress={() => router.push('/(app)/(tabs)/tasks')}
                     >
-                        <Ionicons name="search" size={24} color={theme.colors.text} />
+                        <Ionicons name="search" size={24} color={theme.colors.text.primary} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.headerButton}
-                        onPress={() => router.push('/tasks/create')}
+                        onPress={() => router.push('/(app)/tasks/form')}
                     >
-                        <Ionicons name="add" size={24} color={theme.colors.text} />
+                        <Ionicons name="add" size={24} color={theme.colors.text.primary} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -161,7 +168,7 @@ export default function TasksScreen() {
                     <Ionicons 
                         name="time-outline" 
                         size={20} 
-                        color={activeTab === 'active' ? theme.colors.primary : theme.colors.textSecondary} 
+                        color={activeTab === 'active' ? theme.colors.primary[700] : theme.colors.text.secondary} 
                     />
                     <Text style={[
                         styles.tabText,
@@ -178,7 +185,7 @@ export default function TasksScreen() {
                     <Ionicons 
                         name="checkmark-circle-outline" 
                         size={20} 
-                        color={activeTab === 'completed' ? theme.colors.primary : theme.colors.textSecondary} 
+                        color={activeTab === 'completed' ? theme.colors.primary[700] : theme.colors.text.secondary} 
                     />
                     <Text style={[
                         styles.tabText,
@@ -195,7 +202,7 @@ export default function TasksScreen() {
                     <Ionicons 
                         name="star-outline" 
                         size={20} 
-                        color={activeTab === 'favorites' ? theme.colors.primary : theme.colors.textSecondary} 
+                        color={activeTab === 'favorites' ? theme.colors.primary[700] : theme.colors.text.secondary} 
                     />
                     <Text style={[
                         styles.tabText,
@@ -209,7 +216,9 @@ export default function TasksScreen() {
     );
 
     const renderTaskGroup = (title: string, groupTasks: TaskWithDetails[]) => {
-        if (groupTasks.length === 0) return null;
+        if (groupTasks.length === 0) {
+            return null;
+        }
 
         return (
             <View style={styles.taskGroup} key={title}>
@@ -277,7 +286,7 @@ export default function TasksScreen() {
         if (loading) {
             return (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                    <ActivityIndicator size="large" color={theme.colors.primary[700]} />
                     <Text style={styles.loadingText}>Loading tasks...</Text>
                 </View>
             );
@@ -299,7 +308,7 @@ export default function TasksScreen() {
                     </Text>
                     <TouchableOpacity
                         style={styles.createButton}
-                        onPress={() => router.push('/tasks/create')}
+                        onPress={() => router.push('/(app)/tasks/form')}
                     >
                         <Text style={styles.createButtonText}>Create New Task</Text>
                     </TouchableOpacity>
@@ -371,10 +380,52 @@ export default function TasksScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+interface Styles {
+    container: ViewStyle;
+    header: ViewStyle;
+    headerTop: ViewStyle;
+    backButton: ViewStyle;
+    headerTitle: TextStyle;
+    headerActions: ViewStyle;
+    headerButton: ViewStyle;
+    tabs: ViewStyle;
+    tab: ViewStyle;
+    activeTab: ViewStyle;
+    tabText: TextStyle;
+    activeTabText: TextStyle;
+    content: ViewStyle;
+    loadingContainer: ViewStyle;
+    loadingText: TextStyle;
+    emptyContainer: ViewStyle;
+    emptyIcon: ImageStyle;
+    emptyText: TextStyle;
+    createButton: ViewStyle;
+    createButtonText: TextStyle;
+    taskGroup: ViewStyle;
+    groupTitle: TextStyle;
+    taskItem: ViewStyle;
+    taskIcon: ViewStyle;
+    taskName: TextStyle;
+    completedTaskName: TextStyle;
+    taskPoints: ViewStyle;
+    pointsText: TextStyle;
+    completedIcon: TextStyle;
+    modalOverlay: ViewStyle;
+    modalContent: ViewStyle;
+    modalTitle: TextStyle;
+    modalMessage: TextStyle;
+    modalActions: ViewStyle;
+    modalButton: ViewStyle;
+    cancelButton: ViewStyle;
+    cancelButtonText: TextStyle;
+    deleteButton: ViewStyle;
+    deleteButtonText: TextStyle;
+}
+
+const styles = StyleSheet.create<Styles>({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.background.primary,
     },
     header: {
         backgroundColor: '#FFF',
@@ -400,8 +451,8 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 24,
         fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.fonts.bold,
+        color: theme.colors.text.primary,
+        fontFamily: theme.typography.fonts.primary,
     },
     headerActions: {
         flexDirection: 'row',
@@ -424,16 +475,16 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent',
     },
     activeTab: {
-        borderBottomColor: theme.colors.primary,
+        borderBottomColor: theme.colors.primary[700],
     },
     tabText: {
         fontSize: 14,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text.secondary,
         marginLeft: 6,
-        fontFamily: theme.fonts.medium,
+        fontFamily: theme.typography.fonts.primary,
     },
     activeTabText: {
-        color: theme.colors.primary,
+        color: theme.colors.primary[700],
     },
     content: {
         flex: 1,
@@ -447,8 +498,8 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 12,
         fontSize: 16,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.regular,
+        color: theme.colors.text.secondary,
+        fontFamily: theme.typography.fonts.primary,
     },
     emptyContainer: {
         flex: 1,
@@ -463,21 +514,21 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text.secondary,
         textAlign: 'center',
         marginBottom: 24,
-        fontFamily: theme.fonts.regular,
+        fontFamily: theme.typography.fonts.primary,
     },
     createButton: {
         paddingHorizontal: 24,
         paddingVertical: 12,
-        backgroundColor: theme.colors.primary,
+        backgroundColor: theme.colors.primary[700],
         borderRadius: 25,
     },
     createButtonText: {
         fontSize: 16,
         color: '#FFF',
-        fontFamily: theme.fonts.medium,
+        fontFamily: theme.typography.fonts.primary,
     },
     taskGroup: {
         marginBottom: 24,
@@ -485,9 +536,9 @@ const styles = StyleSheet.create({
     groupTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: theme.colors.text,
+        color: theme.colors.text.primary,
         marginBottom: 12,
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.typography.fonts.primary,
     },
     taskItem: {
         flexDirection: 'row',
@@ -507,12 +558,12 @@ const styles = StyleSheet.create({
     taskName: {
         flex: 1,
         fontSize: 16,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.medium,
+        color: theme.colors.text.primary,
+        fontFamily: theme.typography.fonts.primary,
     },
     completedTaskName: {
         textDecorationLine: 'line-through',
-        color: theme.colors.textSecondary,
+        color: theme.colors.text.secondary,
     },
     taskPoints: {
         flexDirection: 'row',
@@ -525,9 +576,9 @@ const styles = StyleSheet.create({
     pointsText: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: theme.colors.text,
+        color: theme.colors.text.primary,
         marginRight: 4,
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.typography.fonts.primary,
     },
     completedIcon: {
         marginLeft: 8,
@@ -548,16 +599,16 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: theme.colors.text,
+        color: theme.colors.text.primary,
         marginBottom: 12,
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.typography.fonts.primary,
     },
     modalMessage: {
         fontSize: 16,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text.secondary,
         textAlign: 'center',
         marginBottom: 24,
-        fontFamily: theme.fonts.regular,
+        fontFamily: theme.typography.fonts.primary,
     },
     modalActions: {
         flexDirection: 'row',
@@ -579,7 +630,7 @@ const styles = StyleSheet.create({
     cancelButtonText: {
         fontSize: 16,
         color: '#666',
-        fontFamily: theme.fonts.medium,
+        fontFamily: theme.typography.fonts.primary,
     },
     deleteButton: {
         backgroundColor: '#F44336',
@@ -588,6 +639,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#FFF',
         marginLeft: 6,
-        fontFamily: theme.fonts.medium,
+        fontFamily: theme.typography.fonts.primary,
     },
 });

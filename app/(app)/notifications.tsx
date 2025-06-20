@@ -6,12 +6,10 @@ import {
     TouchableOpacity,
     StyleSheet,
     ScrollView,
-    Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../src/styles';
-import { getDashboardImageSource } from '../../src/lib/utils/imageManager';
 
 interface Notification {
     id: string;
@@ -194,8 +192,10 @@ export default function NotificationsScreen() {
                 ) : (
                     /* Empty State */
                     <View style={styles.emptyState}>
-                        <Image
-                            source={getDashboardImageSource('bell')}
+                        <Ionicons
+                            name="notifications-outline"
+                            size={80}
+                            color={theme.colors.text.muted}
                             style={styles.emptyStateIcon}
                         />
                         <Text style={styles.emptyStateTitle}>No Notifications!</Text>

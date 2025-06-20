@@ -15,7 +15,6 @@ import {
     Alert,
 } from "react-native";
 import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
-import { useNavigation } from "@react-navigation/native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from 'expo-router';
 import { useAuthStore } from "../../../src/store/authStore";
@@ -23,38 +22,37 @@ import { useTasksStore } from "../../../src/store/tasksStore";
 import { theme } from "../../../src/styles";
 import { LoadingSpinner } from "../../../src/components/ui";
 import type { Suggestion } from "../../../src/types";
-import { getTaskIconSource, getUIImageSource } from "../../../src/lib/utils/imageManager";
 
-// Asset mapping for icons using imageManager
+// Asset mapping for icons using placeholder images
 const assetMap: Record<string, any> = {
-    '24 hours': getTaskIconSource('24 hours'),
-    'bag': getTaskIconSource('bag'),
-    'bellring': getTaskIconSource('bellring'),
-    'burger': getTaskIconSource('burger'),
-    'call': getTaskIconSource('call'),
-    'car': getTaskIconSource('car'),
-    'cheers': getTaskIconSource('cheers'),
-    'chef': getTaskIconSource('chef'),
-    'cart': getTaskIconSource('cart'),
-    'computer': getTaskIconSource('computer'),
-    'cycle': getTaskIconSource('cycle'),
-    'doctor': getTaskIconSource('doctor'),
-    'email': getTaskIconSource('email'),
-    'food': getTaskIconSource('food'),
-    'game': getTaskIconSource('game'),
-    'grad': getTaskIconSource('grad'),
-    'guitar': getTaskIconSource('guitar'),
-    'gym': getTaskIconSource('gym'),
-    'heart': getTaskIconSource('heart'),
-    'home': getTaskIconSource('home'),
-    'paint': getTaskIconSource('paint'),
-    'pet': getTaskIconSource('pet'),
-    'pizza': getTaskIconSource('pizza'),
-    'profile': getTaskIconSource('profile'),
-    'ringbell': getTaskIconSource('ringbell'),
-    'shopping': getTaskIconSource('shopping'),
-    'video': getTaskIconSource('video'),
-    'tea': getTaskIconSource('tea'),
+    '24 hours': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🕛' },
+    'bag': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=👜' },
+    'bellring': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🔔' },
+    'burger': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🍔' },
+    'call': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=📞' },
+    'car': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🚗' },
+    'cheers': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🥂' },
+    'chef': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=👨‍🍳' },
+    'cart': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🛒' },
+    'computer': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=💻' },
+    'cycle': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🚴' },
+    'doctor': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=👩‍⚕️' },
+    'email': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=📧' },
+    'food': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🍽️' },
+    'game': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🎮' },
+    'grad': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🎓' },
+    'guitar': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🎸' },
+    'gym': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=💪' },
+    'heart': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=❤️' },
+    'home': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🏠' },
+    'paint': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🎨' },
+    'pet': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🐕' },
+    'pizza': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🍕' },
+    'profile': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=👤' },
+    'ringbell': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🛎️' },
+    'shopping': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🛍️' },
+    'video': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=📹' },
+    'tea': { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=🍵' },
 };
 
 type IconName =
@@ -170,7 +168,6 @@ interface IconItem {
 }
 
 export default function TaskFormScreen() {
-    const navigation = useNavigation();
     const { user } = useAuthStore();
     const { suggestions, fetchSuggestions, createTask } = useTasksStore();
 
@@ -209,9 +206,11 @@ export default function TaskFormScreen() {
     const selectedIcon = activeTab === "Daily" ? dailySelectedIcon : personalSelectedIcon;
     const setSelectedIcon = activeTab === "Daily" ? setDailySelectedIcon : setPersonalSelectedIcon;
 
-    const onDateChange = (event: any, newDate?: Date) => {
+    const onDateChange = (_event: any, newDate?: Date) => {
         setShowDatePicker(false);
-        if (newDate) setCurrentForm((prev) => ({ ...prev, selectedDate: newDate }));
+        if (newDate) {
+            setCurrentForm((prev) => ({ ...prev, selectedDate: newDate }));
+        }
     };
 
     const formatDate = (date: Date) => {
@@ -223,7 +222,6 @@ export default function TaskFormScreen() {
         });
     };
 
-    const formatDateForBackend = (date: Date) => date.toISOString();
 
     const selectRepeatOption = (option: string) => {
         setCurrentForm((prev) => ({ ...prev, repeatOption: option }));
@@ -285,19 +283,19 @@ export default function TaskFormScreen() {
                 icon: fileId,
                 userId: user.$id,
                 isFavorite: false,
-                status: 'active',
+                status: 'active' as const,
                 points: 5,
             };
 
             await createTask(taskData);
 
             // Create task detail if needed
-            const taskDetailData = {
-                Date: formatDateForBackend(currentForm.selectedDate),
-                All_day: currentForm.isAllDay,
-                Recurrence_type: currentForm.repeatOption,
-                userId: user.$id,
-            };
+            // const taskDetailData = {
+            //     Date: formatDateForBackend(currentForm.selectedDate),
+            //     All_day: currentForm.isAllDay,
+            //     Recurrence_type: currentForm.repeatOption,
+            //     userId: user.$id,
+            // };
 
             Alert.alert("Success", "Task created successfully!");
 
@@ -335,7 +333,7 @@ export default function TaskFormScreen() {
         setShowIconPicker(true);
     };
 
-    const renderLeftActions = (progress: any, dragX: any, id: string, isSuggestion: boolean = false) => {
+    const renderLeftActions = (_progress: any, _dragX: any, id: string, _isSuggestion: boolean = false) => {
         return (
             <View
                 style={[
@@ -364,7 +362,7 @@ export default function TaskFormScreen() {
     const renderSuggestion = ({ item }: { item: Suggestion }) => {
         const iconSource = item.icon && typeof item.icon === 'string' && item.icon.trim() !== ''
             ? { uri: `https://cloud.appwrite.io/v1/storage/buckets/67e227bf00075deadffc/files/${item.icon}/view?project=67cfa24f0031e006fba3` }
-            : getUIImageSource('Waterdrop');
+            : { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=💧' };
 
         return (
             <Swipeable renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item.$id, true)}>
@@ -387,7 +385,7 @@ export default function TaskFormScreen() {
                         </View>
                         <Text style={styles.taskText}>{item.title}</Text>
                         <Text style={styles.points}>{item.points || 5}</Text>
-                        <Image source={getUIImageSource('Waterdrop')} style={styles.drop} />
+                        <Image source={{ uri: 'https://via.placeholder.com/16x16/4CAF50/FFFFFF?text=💧' }} style={styles.drop} />
                     </TouchableOpacity>
                 </View>
             </Swipeable>
@@ -454,7 +452,7 @@ export default function TaskFormScreen() {
                     <View style={styles.largeblock}>
                         {/* All Day Toggle */}
                         <View style={styles.allDayContainer}>
-                            <Image source={getUIImageSource('Clock')} style={styles.clock} />
+                            <Image source={{ uri: 'https://via.placeholder.com/25x25/333333/FFFFFF?text=🕐' }} style={styles.clock} />
                             <Text style={styles.day}>All-day</Text>
                             <Switch
                                 trackColor={{ false: theme.colors.primary[900], true: theme.colors.primary[900] }}
@@ -468,16 +466,16 @@ export default function TaskFormScreen() {
 
                         {/* Date Picker */}
                         <TouchableOpacity style={styles.dateContainer} onPress={() => setShowDatePicker(true)}>
-                            <Image source={getUIImageSource('calendar_month')} style={styles.calendar} />
+                            <Image source={{ uri: 'https://via.placeholder.com/25x25/333333/FFFFFF?text=📅' }} style={styles.calendar} />
                             <Text style={styles.date}>{formatDate(currentForm.selectedDate)}</Text>
-                            <Image source={getUIImageSource('Down arrow')} style={styles.downarrow} />
+                            <Image source={{ uri: 'https://via.placeholder.com/12x12/333333/FFFFFF?text=⬇' }} style={styles.downarrow} />
                         </TouchableOpacity>
 
                         {/* Repeat Option */}
                         <TouchableOpacity style={styles.repeatContainer} onPress={() => setShowRepeatDropdown(true)}>
-                            <Image source={getUIImageSource('Repeat')} style={styles.loop} />
+                            <Image source={{ uri: 'https://via.placeholder.com/25x25/333333/FFFFFF?text=🔄' }} style={styles.loop} />
                             <Text style={styles.repeat}>{currentForm.repeatOption}</Text>
-                            <Image source={getUIImageSource('Down arrow')} style={styles.downarrow2} />
+                            <Image source={{ uri: 'https://via.placeholder.com/12x12/333333/FFFFFF?text=⬇' }} style={styles.downarrow2} />
                         </TouchableOpacity>
 
                         {/* Icon Selection */}
@@ -486,7 +484,7 @@ export default function TaskFormScreen() {
                                 source={
                                     selectedIcon
                                         ? iconImages[selectedIcon].imageSource
-                                        : getUIImageSource('Waterdrop')
+                                        : { uri: 'https://via.placeholder.com/24x24/4CAF50/FFFFFF?text=💧' }
                                 }
                                 style={styles.selectedIcon}
                                 resizeMode="contain"
@@ -494,7 +492,7 @@ export default function TaskFormScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.iconplus} onPress={openIconPicker} disabled={loading}>
-                            <Image source={getUIImageSource('wplus')} style={[styles.plus, loading && styles.disabledImage]} />
+                            <Image source={{ uri: 'https://via.placeholder.com/16x16/FFFFFF/333333?text=+' }} style={[styles.plus, loading && styles.disabledImage]} />
                         </TouchableOpacity>
 
                         {/* Title Input */}
@@ -531,7 +529,7 @@ export default function TaskFormScreen() {
 
                     {/* Search Button */}
                     <TouchableOpacity style={styles.mglass} onPress={() => console.log("Search pressed")}>
-                        <Image source={getUIImageSource('MagnifyingGlass')} style={styles.glassicon} />
+                        <Image source={{ uri: 'https://via.placeholder.com/20x20/FFFFFF/333333?text=🔍' }} style={styles.glassicon} />
                     </TouchableOpacity>
                 </View>
             </View>
