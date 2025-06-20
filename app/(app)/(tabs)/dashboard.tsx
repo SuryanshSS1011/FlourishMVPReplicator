@@ -11,6 +11,9 @@ import {
     ActivityIndicator,
     RefreshControl,
     Alert,
+    ViewStyle,
+    TextStyle,
+    ImageStyle,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,17 +54,13 @@ export default function DashboardScreen() {
         nextWatering: null,
     });
 
-    useEffect(() => {
-        loadDashboardData();
-    }, [loadDashboardData]);
-
     const loadDashboardData = useCallback(async () => {
         try {
             setLoading(true);
 
             // Load user's main plant
             const plantsResult = await plantService.getUserPlants();
-            const mainPlant = plantsResult.success && plantsResult.data?.length > 0 
+            const mainPlant = plantsResult.success && plantsResult.data && plantsResult.data.length > 0 
                 ? plantsResult.data[0] 
                 : null;
 
@@ -71,9 +70,18 @@ export default function DashboardScreen() {
 
             // Load task statistics
             const statsResult = await taskService.getUserTaskStats();
+            const defaultStats = {
+                totalTasks: 0,
+                completedTasks: 0,
+                pendingTasks: 0,
+                overdueTasks: 0,
+                completionRate: 0,
+                streak: 0,
+                totalPoints: 0,
+            };
             const taskStats = statsResult.success && statsResult.data 
                 ? statsResult.data 
-                : dashboardData.taskStats;
+                : defaultStats;
 
             // Calculate plant health based on care
             let plantHealth = 0;
@@ -106,6 +114,10 @@ export default function DashboardScreen() {
             setRefreshing(false);
         }
     }, []);
+
+    useEffect(() => {
+        loadDashboardData();
+    }, [loadDashboardData]);
 
     const handleRefresh = () => {
         setRefreshing(true);
@@ -150,9 +162,9 @@ export default function DashboardScreen() {
             <View style={styles.headerTop}>
                 <TouchableOpacity 
                     style={styles.notificationButton}
-                    onPress={() => router.push('/(app)/notifications')}
+                    onPress={() => router.push('/(app)/(tabs)/dashboard')}
                 >
-                    <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
+                    <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
                     {dashboardData.taskStats.overdueTasks > 0 && (
                         <View style={styles.notificationBadge}>
                             <Text style={styles.badgeText}>
@@ -164,7 +176,7 @@ export default function DashboardScreen() {
 
                 <TouchableOpacity 
                     style={styles.profileButton}
-                    onPress={() => router.push('/(app)/profile')}
+                    onPress={() => router.push('/(app)/(tabs)/dashboard')}
                 >
                     <Image
                         source={{ 
@@ -223,9 +235,9 @@ export default function DashboardScreen() {
                     ) : (
                         <TouchableOpacity
                             style={styles.addPlantButton}
-                            onPress={() => router.push('/(app)/plants/add')}
+                            onPress={() => router.push('/(app)/tasks/form')}
                         >
-                            <Ionicons name="add-circle-outline" size={48} color={theme.colors.primary} />
+                            <Ionicons name="add-circle-outline" size={48} color={theme.colors.primary[700]} />
                             <Text style={styles.addPlantText}>Add Your First Plant</Text>
                         </TouchableOpacity>
                     )}
@@ -300,7 +312,7 @@ export default function DashboardScreen() {
                         <Ionicons 
                             name={task.category === 'watering' ? 'water' : 'leaf'} 
                             size={24} 
-                            color={theme.colors.primary} 
+                            color={theme.colors.primary[700]} 
                         />
                     )}
                 </View>
@@ -314,7 +326,7 @@ export default function DashboardScreen() {
                     <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
                 ) : (
                     <View style={styles.taskAction}>
-                        <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+                        <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
                     </View>
                 )}
             </TouchableOpacity>
@@ -325,7 +337,7 @@ export default function DashboardScreen() {
         <View style={styles.tasksSection}>
             <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Today&apos;s Tasks</Text>
-                <TouchableOpacity onPress={() => router.push('/(app)/tasks')}>
+                <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/tasks')}>
                     <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
             </View>
@@ -334,11 +346,11 @@ export default function DashboardScreen() {
                 dashboardData.todayTasks.map(renderTaskItem)
             ) : (
                 <View style={styles.emptyTasks}>
-                    <Ionicons name="checkmark-done-circle" size={48} color={theme.colors.textSecondary} />
+                    <Ionicons name="checkmark-done-circle" size={48} color={theme.colors.text.secondary} />
                     <Text style={styles.emptyTasksText}>All tasks completed!</Text>
                     <TouchableOpacity
                         style={styles.addTaskButton}
-                        onPress={() => router.push('/(app)/tasks/create')}
+                        onPress={() => router.push('/(app)/tasks/form')}
                     >
                         <Text style={styles.addTaskButtonText}>Add New Task</Text>
                     </TouchableOpacity>
@@ -351,7 +363,7 @@ export default function DashboardScreen() {
         <View style={styles.quickActions}>
             <TouchableOpacity 
                 style={styles.actionButton}
-                onPress={() => router.push('/(app)/greenhouse')}
+                onPress={() => router.push('/(app)/(tabs)/greenhouse')}
             >
                 <LinearGradient
                     colors={['#81C784', '#66BB6A']}
@@ -364,7 +376,7 @@ export default function DashboardScreen() {
 
             <TouchableOpacity 
                 style={styles.actionButton}
-                onPress={() => router.push('/(app)/shop')}
+                onPress={() => router.push('/(app)/(tabs)/tasks')}
             >
                 <LinearGradient
                     colors={['#64B5F6', '#42A5F5']}
@@ -377,7 +389,7 @@ export default function DashboardScreen() {
 
             <TouchableOpacity 
                 style={styles.actionButton}
-                onPress={() => router.push('/(app)/achievements')}
+                onPress={() => router.push('/(app)/(tabs)/tasks')}
             >
                 <LinearGradient
                     colors={['#FFB74D', '#FFA726']}
@@ -393,7 +405,7 @@ export default function DashboardScreen() {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <ActivityIndicator size="large" color={theme.colors.primary[700]} />
                 <Text style={styles.loadingText}>Loading your garden...</Text>
             </View>
         );
@@ -408,7 +420,7 @@ export default function DashboardScreen() {
                 <RefreshControl
                     refreshing={refreshing}
                     onRefresh={handleRefresh}
-                    colors={[theme.colors.primary]}
+                    colors={[theme.colors.primary[700]]}
                 />
             }
         >
@@ -420,10 +432,65 @@ export default function DashboardScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+interface Styles {
+    container: ViewStyle;
+    contentContainer: ViewStyle;
+    loadingContainer: ViewStyle;
+    loadingText: TextStyle;
+    header: ViewStyle;
+    headerTop: ViewStyle;
+    notificationButton: ViewStyle;
+    notificationBadge: ViewStyle;
+    badgeText: TextStyle;
+    profileButton: ViewStyle;
+    profileImage: ImageStyle;
+    greeting: TextStyle;
+    statsContainer: ViewStyle;
+    statItem: ViewStyle;
+    statValue: TextStyle;
+    statLabel: TextStyle;
+    statDivider: ViewStyle;
+    plantSection: ViewStyle;
+    plantBackground: ViewStyle;
+    sunIcon: ImageStyle;
+    plantContainer: ViewStyle;
+    plant: ViewStyle;
+    plantImage: ImageStyle;
+    addPlantButton: ViewStyle;
+    addPlantText: TextStyle;
+    pot: ImageStyle;
+    plantInfo: ViewStyle;
+    plantName: TextStyle;
+    healthBar: ViewStyle;
+    healthFill: ViewStyle;
+    wateringText: TextStyle;
+    tasksSection: ViewStyle;
+    sectionHeader: ViewStyle;
+    sectionTitle: TextStyle;
+    seeAllText: TextStyle;
+    taskItem: ViewStyle;
+    completedTask: ViewStyle;
+    overdueTask: ViewStyle;
+    taskIcon: ViewStyle;
+    taskIconImage: ImageStyle;
+    taskContent: ViewStyle;
+    taskName: TextStyle;
+    taskPoints: TextStyle;
+    taskAction: ViewStyle;
+    emptyTasks: ViewStyle;
+    emptyTasksText: TextStyle;
+    addTaskButton: ViewStyle;
+    addTaskButtonText: TextStyle;
+    quickActions: ViewStyle;
+    actionButton: ViewStyle;
+    actionGradient: ViewStyle;
+    actionText: TextStyle;
+}
+
+const styles = StyleSheet.create<Styles>({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.background.primary,
     },
     contentContainer: {
         paddingBottom: 100,
@@ -432,13 +499,13 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.background.primary,
     },
     loadingText: {
         marginTop: 12,
         fontSize: 16,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.regular,
+        color: theme.colors.text.secondary,
+        fontFamily: theme.typography.fonts.primary,
     },
     header: {
         padding: 20,
@@ -468,7 +535,7 @@ const styles = StyleSheet.create({
     badgeText: {
         fontSize: 12,
         color: '#FFF',
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.typography.fonts.primary,
     },
     profileButton: {
         width: 40,
@@ -483,9 +550,9 @@ const styles = StyleSheet.create({
     greeting: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: theme.colors.text,
+        color: theme.colors.text.primary,
         marginBottom: 16,
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.typography.fonts.primary,
     },
     statsContainer: {
         flexDirection: 'row',
@@ -506,14 +573,14 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.bold,
+        color: theme.colors.primary[700],
+        fontFamily: theme.typography.fonts.primary,
     },
     statLabel: {
         fontSize: 12,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text.secondary,
         marginTop: 4,
-        fontFamily: theme.fonts.regular,
+        fontFamily: theme.typography.fonts.primary,
     },
     statDivider: {
         width: 1,
@@ -563,8 +630,8 @@ const styles = StyleSheet.create({
     addPlantText: {
         marginTop: 8,
         fontSize: 16,
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.medium,
+        color: theme.colors.primary[700],
+        fontFamily: theme.typography.fonts.primary,
     },
     pot: {
         position: 'absolute',
@@ -581,9 +648,9 @@ const styles = StyleSheet.create({
     plantName: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: theme.colors.text,
+        color: theme.colors.text.primary,
         marginBottom: 8,
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.typography.fonts.primary,
     },
     healthBar: {
         height: 6,
@@ -598,8 +665,8 @@ const styles = StyleSheet.create({
     },
     wateringText: {
         fontSize: 12,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.fonts.regular,
+        color: theme.colors.text.secondary,
+        fontFamily: theme.typography.fonts.primary,
     },
     tasksSection: {
         marginHorizontal: 20,
@@ -613,13 +680,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.fonts.bold,
+        color: theme.colors.text.primary,
+        fontFamily: theme.typography.fonts.primary,
     },
     seeAllText: {
         fontSize: 14,
-        color: theme.colors.primary,
-        fontFamily: theme.fonts.medium,
+        color: theme.colors.primary[700],
+        fontFamily: theme.typography.fonts.primary,
     },
     taskItem: {
         flexDirection: 'row',
@@ -659,14 +726,14 @@ const styles = StyleSheet.create({
     },
     taskName: {
         fontSize: 16,
-        color: theme.colors.text,
-        fontFamily: theme.fonts.medium,
+        color: theme.colors.text.primary,
+        fontFamily: theme.typography.fonts.primary,
     },
     taskPoints: {
         fontSize: 12,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text.secondary,
         marginTop: 2,
-        fontFamily: theme.fonts.regular,
+        fontFamily: theme.typography.fonts.primary,
     },
     taskAction: {
         width: 32,
@@ -684,21 +751,21 @@ const styles = StyleSheet.create({
     },
     emptyTasksText: {
         fontSize: 16,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text.secondary,
         marginTop: 12,
-        fontFamily: theme.fonts.regular,
+        fontFamily: theme.typography.fonts.primary,
     },
     addTaskButton: {
         marginTop: 16,
         paddingHorizontal: 20,
         paddingVertical: 10,
-        backgroundColor: theme.colors.primary,
+        backgroundColor: theme.colors.primary[700],
         borderRadius: 20,
     },
     addTaskButtonText: {
         fontSize: 14,
         color: '#FFF',
-        fontFamily: theme.fonts.medium,
+        fontFamily: theme.typography.fonts.primary,
     },
     quickActions: {
         flexDirection: 'row',
@@ -719,6 +786,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#FFF',
         marginTop: 8,
-        fontFamily: theme.fonts.medium,
+        fontFamily: theme.typography.fonts.primary,
     },
 });
