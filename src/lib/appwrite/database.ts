@@ -1,19 +1,18 @@
 // src/lib/appwrite/database.ts
 
-import { ID, Query, Models } from 'react-native-appwrite';
-import { appwriteService, APPWRITE_CONFIG } from './config';
-import type { ApiResponse, PaginatedResponse } from '../../types/api';
+import { ID, Models, Query } from 'react-native-appwrite';
+import type { ApiResponse } from '../../types/api';
+import { APPWRITE_CONFIG, appwriteService } from './config';
 
-// Database document interfaces
+// Document interfaces that extend Appwrite Models.Document
 export interface PlantDocument extends Models.Document {
     name: string;
     scientificName?: string;
     category: string;
     description: string;
-    imageId?: string;
     careLevel: 'easy' | 'medium' | 'hard';
-    wateringFrequency: number; // days
-    lightRequirement: 'low' | 'medium' | 'high';
+    waterFrequency: number; // days
+    sunlightRequirement: 'low' | 'medium' | 'high';
     temperature: {
         min: number;
         max: number;
@@ -22,64 +21,72 @@ export interface PlantDocument extends Models.Document {
         min: number;
         max: number;
     };
-    growthRate: 'slow' | 'moderate' | 'fast';
-    matureHeight: number; // cm
-    toxicity: boolean;
+    growthRate: 'slow' | 'medium' | 'fast';
+    maxHeight: number; // cm
+    toxicity: string;
+    imageId?: string;
+    isPremium: boolean;
     tags: string[];
 }
 
 export interface UserPlantDocument extends Models.Document {
     userId: string; // Appwrite User ID
-    plantId: string;
-    nickname?: string;
-    acquiredDate: string;
-    location?: string;
-    potSize?: number; // cm
-    soilType?: string;
+    plantId: string; // Reference to PlantDocument
+    plantName?: string; // Custom name
+    nickName?: string;
+    dateAdded: string;
     lastWatered?: string;
     lastFertilized?: string;
-    lastRepotted?: string;
+    location?: string;
+    pot?: string;
     notes?: string;
-    healthStatus: 'excellent' | 'good' | 'fair' | 'poor';
+    imageId?: string;
+    health: 'excellent' | 'good' | 'fair' | 'poor';
     growthStage: 'seedling' | 'young' | 'mature';
-    imageIds: string[];
-}
-
-export interface TaskDocument extends Models.Document {
-    name: string;
-    category: 'watering' | 'fertilizing' | 'pruning' | 'repotting' | 'cleaning' | 'other';
-    description: string;
-    iconId?: string;
-    defaultFrequency?: number; // days
-    defaultDuration?: number; // minutes
-    points: number;
-}
-
-export interface TaskDetailDocument extends Models.Document {
-    userId: string; // Appwrite User ID
-    userPlantId?: string;
-    taskId: string;
-    scheduledDate: string;
-    completedDate?: string;
-    status: 'pending' | 'completed' | 'skipped' | 'overdue';
-    notes?: string;
-    reminderEnabled: boolean;
-    reminderTime?: string;
+    notificationsEnabled: boolean;
+    activeNutrients?: string; // JSON string of active nutrients
 }
 
 export interface NutrientDocument extends Models.Document {
     name: string;
-    type: 'fertilizer' | 'supplement' | 'pesticide' | 'fungicide';
-    brand?: string;
-    composition: string;
-    npkRatio?: string; // e.g., "10-10-10"
-    applicationMethod: 'soil' | 'foliar' | 'water';
-    dosage: string;
-    frequency: string;
-    imageId?: string;
+    type: 'fertilizer' | 'supplement' | 'treatment';
     description: string;
-    precautions?: string;
-    tags: string[];
+    benefits: string[];
+    applicationMethod: string;
+    frequency: string;
+    dosage: string;
+    imageId?: string;
+    isPremium: boolean;
+    plantTypes: string[];
+    timer?: string; // Duration in seconds
+}
+
+export interface TaskDocument extends Models.Document {
+    userId: string; // Appwrite User ID
+    userPlantId?: string;
+    type: 'water' | 'fertilize' | 'prune' | 'repot' | 'custom';
+    title: string;
+    description?: string;
+    dueDate: string;
+    completedDate?: string;
+    isCompleted: boolean;
+    isRecurring: boolean;
+    recurringInterval?: number; // days
+    priority: 'low' | 'medium' | 'high';
+    reminderEnabled: boolean;
+    reminderTime?: string;
+    points: number;
+}
+
+export interface TaskDetailDocument extends Models.Document {
+    taskId: string; // Reference to TaskDocument
+    notes?: string;
+    imageIds?: string[];
+    completionTime?: string;
+    nutrientsApplied?: string[]; // Nutrient IDs
+    weatherConditions?: string;
+    plantHealthBefore?: string;
+    plantHealthAfter?: string;
 }
 
 export interface SuggestionDocument extends Models.Document {
@@ -94,6 +101,12 @@ export interface SuggestionDocument extends Models.Document {
     isRead: boolean;
     isDismissed: boolean;
     expiresAt?: string;
+}
+
+// Generic list response
+export interface ListResponse<T> {
+    documents: T[];
+    total: number;
 }
 
 class DatabaseService {
@@ -112,6 +125,10 @@ class DatabaseService {
         permissions?: string[]
     ): Promise<ApiResponse<T>> {
         try {
+            if (!APPWRITE_CONFIG.databaseId || !collectionId) {
+                throw new Error('Database ID or Collection ID not configured');
+            }
+
             const documentId = ID.unique();
             const response = await this.databases.createDocument(
                 APPWRITE_CONFIG.databaseId,
@@ -142,6 +159,10 @@ class DatabaseService {
         queries?: string[]
     ): Promise<ApiResponse<T>> {
         try {
+            if (!APPWRITE_CONFIG.databaseId || !collectionId) {
+                throw new Error('Database ID or Collection ID not configured');
+            }
+
             const response = await this.databases.getDocument(
                 APPWRITE_CONFIG.databaseId,
                 collectionId,
@@ -167,25 +188,25 @@ class DatabaseService {
     async listDocuments<T extends Models.Document>(
         collectionId: string,
         queries?: string[]
-    ): Promise<PaginatedResponse<T>> {
+    ): Promise<ApiResponse<ListResponse<T>>> {
         try {
+            if (!APPWRITE_CONFIG.databaseId || !collectionId) {
+                throw new Error('Database ID or Collection ID not configured');
+            }
+
             const response = await this.databases.listDocuments(
                 APPWRITE_CONFIG.databaseId,
                 collectionId,
-                queries || []
+                queries
             );
 
             return {
                 success: true,
-                message: 'Documents listed successfully',
-                data: response.documents as T[],
-                total: response.total,
-                limit: queries?.find(q => q.includes('limit')) 
-                    ? parseInt(queries.find(q => q.includes('limit'))!.split('(')[1].split(')')[0]) 
-                    : 25,
-                offset: queries?.find(q => q.includes('offset')) 
-                    ? parseInt(queries.find(q => q.includes('offset'))!.split('(')[1].split(')')[0]) 
-                    : 0,
+                message: 'Documents retrieved successfully',
+                data: {
+                    documents: response.documents as T[],
+                    total: response.total,
+                },
             };
         } catch (error: any) {
             console.error('List documents error:', error);
@@ -193,10 +214,6 @@ class DatabaseService {
                 success: false,
                 message: this.getErrorMessage(error),
                 error: error.message,
-                data: [],
-                total: 0,
-                limit: 25,
-                offset: 0,
             };
         }
     }
@@ -208,6 +225,10 @@ class DatabaseService {
         permissions?: string[]
     ): Promise<ApiResponse<T>> {
         try {
+            if (!APPWRITE_CONFIG.databaseId || !collectionId) {
+                throw new Error('Database ID or Collection ID not configured');
+            }
+
             const response = await this.databases.updateDocument(
                 APPWRITE_CONFIG.databaseId,
                 collectionId,
@@ -231,11 +252,15 @@ class DatabaseService {
         }
     }
 
-    private async deleteDocument(
+    async deleteDocument(
         collectionId: string,
         documentId: string
     ): Promise<ApiResponse> {
         try {
+            if (!APPWRITE_CONFIG.databaseId || !collectionId) {
+                throw new Error('Database ID or Collection ID not configured');
+            }
+
             await this.databases.deleteDocument(
                 APPWRITE_CONFIG.databaseId,
                 collectionId,
@@ -257,334 +282,183 @@ class DatabaseService {
     }
 
     /**
-     * Plant operations
+     * Plant-specific operations
      */
-    async createPlant(plantData: Omit<PlantDocument, keyof Models.Document>) {
+    async createPlant(
+        data: Omit<PlantDocument, keyof Models.Document>
+    ): Promise<ApiResponse<PlantDocument>> {
         return this.createDocument<PlantDocument>(
             APPWRITE_CONFIG.collections.plants,
-            plantData,
-            ['read("any")'] // Public read access
+            data,
+            ['read("any")'] // Plants are public
         );
     }
 
-    async getPlant(plantId: string) {
+    async getPlant(plantId: string): Promise<ApiResponse<PlantDocument>> {
         return this.getDocument<PlantDocument>(
             APPWRITE_CONFIG.collections.plants,
             plantId
         );
     }
 
-    async listPlants(queries?: string[]) {
+    async listPlants(queries?: string[]): Promise<ApiResponse<ListResponse<PlantDocument>>> {
         return this.listDocuments<PlantDocument>(
             APPWRITE_CONFIG.collections.plants,
             queries
-        );
-    }
-
-    async searchPlants(searchTerm: string, category?: string) {
-        const queries = [
-            Query.search('name', searchTerm),
-            Query.limit(20),
-        ];
-
-        if (category) {
-            queries.push(Query.equal('category', category));
-        }
-
-        return this.listDocuments<PlantDocument>(
-            APPWRITE_CONFIG.collections.plants,
-            queries
-        );
-    }
-
-    async getPlantsByCategory(category: string) {
-        return this.listDocuments<PlantDocument>(
-            APPWRITE_CONFIG.collections.plants,
-            [
-                Query.equal('category', category),
-                Query.orderAsc('name'),
-                Query.limit(50)
-            ]
         );
     }
 
     /**
      * User Plant operations
      */
-    async createUserPlant(userPlantData: Omit<UserPlantDocument, keyof Models.Document> & { userId: string }) {
-        // Ensure we have proper permissions for the user
-        const permissions = [
-            `read("user:${userPlantData.userId}")`,
-            `write("user:${userPlantData.userId}")`,
-            `delete("user:${userPlantData.userId}")`
-        ];
-
+    async createUserPlant(
+        userId: string,
+        data: Omit<UserPlantDocument, keyof Models.Document | 'userId'>
+    ): Promise<ApiResponse<UserPlantDocument>> {
         return this.createDocument<UserPlantDocument>(
             APPWRITE_CONFIG.collections.userPlants,
-            userPlantData,
-            permissions
+            { ...data, userId },
+            [`read("user:${userId}")`, `write("user:${userId}")`]
         );
     }
 
-    async getUserPlant(userPlantId: string) {
-        return this.getDocument<UserPlantDocument>(
-            APPWRITE_CONFIG.collections.userPlants,
-            userPlantId
-        );
-    }
+    async getUserPlants(
+        userId: string,
+        queries?: string[]
+    ): Promise<ApiResponse<ListResponse<UserPlantDocument>>> {
+        const defaultQueries = [
+            Query.equal('userId', userId),
+            Query.orderDesc('$createdAt'),
+        ];
 
-    async listUserPlants(userId: string) {
         return this.listDocuments<UserPlantDocument>(
             APPWRITE_CONFIG.collections.userPlants,
-            [
-                Query.equal('userId', userId),
-                Query.orderDesc('$createdAt')
-            ]
-        );
-    }
-
-    async getUserPlantsByLocation(userId: string, location: string) {
-        return this.listDocuments<UserPlantDocument>(
-            APPWRITE_CONFIG.collections.userPlants,
-            [
-                Query.equal('userId', userId),
-                Query.equal('location', location),
-                Query.orderAsc('nickname')
-            ]
+            [...defaultQueries, ...(queries || [])]
         );
     }
 
     async updateUserPlant(
-        userPlantId: string,
+        plantId: string,
+        userId: string,
         data: Partial<Omit<UserPlantDocument, keyof Models.Document>>
-    ) {
+    ): Promise<ApiResponse<UserPlantDocument>> {
         return this.updateDocument<UserPlantDocument>(
             APPWRITE_CONFIG.collections.userPlants,
-            userPlantId,
-            data
-        );
-    }
-
-    async deleteUserPlant(userPlantId: string) {
-        return this.deleteDocument(
-            APPWRITE_CONFIG.collections.userPlants,
-            userPlantId
+            plantId,
+            data,
+            [`read("user:${userId}")`, `write("user:${userId}")`]
         );
     }
 
     /**
      * Task operations
      */
-    async createTask(taskData: Omit<TaskDocument, keyof Models.Document>) {
+    async createTask(
+        userId: string,
+        data: Omit<TaskDocument, keyof Models.Document | 'userId'>
+    ): Promise<ApiResponse<TaskDocument>> {
         return this.createDocument<TaskDocument>(
             APPWRITE_CONFIG.collections.tasks,
-            taskData,
-            ['read("any")'] // Public templates
+            { ...data, userId },
+            [`read("user:${userId}")`, `write("user:${userId}")`]
         );
     }
 
-    async getTask(taskId: string) {
-        return this.getDocument<TaskDocument>(
-            APPWRITE_CONFIG.collections.tasks,
-            taskId
-        );
-    }
-
-    async listTasks(category?: string) {
-        const queries = category
-            ? [Query.equal('category', category), Query.orderAsc('name')]
-            : [Query.orderAsc('name')];
-
-        return this.listDocuments<TaskDocument>(
-            APPWRITE_CONFIG.collections.tasks,
-            queries
-        );
-    }
-
-    async getDefaultTasks() {
-        return this.listDocuments<TaskDocument>(
-            APPWRITE_CONFIG.collections.tasks,
-            [
-                Query.notEqual('category', 'other'),
-                Query.orderAsc('category'),
-                Query.limit(10)
-            ]
-        );
-    }
-
-    /**
-     * Task Detail operations
-     */
-    async createTaskDetail(taskDetailData: Omit<TaskDetailDocument, keyof Models.Document> & { userId: string }) {
-        const permissions = [
-            `read("user:${taskDetailData.userId}")`,
-            `write("user:${taskDetailData.userId}")`,
-            `delete("user:${taskDetailData.userId}")`
+    async getUserTasks(
+        userId: string,
+        queries?: string[]
+    ): Promise<ApiResponse<ListResponse<TaskDocument>>> {
+        const defaultQueries = [
+            Query.equal('userId', userId),
+            Query.orderAsc('dueDate'),
         ];
 
-        return this.createDocument<TaskDetailDocument>(
-            APPWRITE_CONFIG.collections.taskDetails,
-            taskDetailData,
-            permissions
+        return this.listDocuments<TaskDocument>(
+            APPWRITE_CONFIG.collections.tasks,
+            [...defaultQueries, ...(queries || [])]
         );
     }
 
-    async getTaskDetail(taskDetailId: string) {
-        return this.getDocument<TaskDetailDocument>(
-            APPWRITE_CONFIG.collections.taskDetails,
-            taskDetailId
-        );
-    }
+    async getUpcomingTasks(
+        userId: string,
+        days: number = 7
+    ): Promise<ApiResponse<ListResponse<TaskDocument>>> {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + days);
 
-    async getUserTasks(userId: string, status?: string) {
         const queries = [
             Query.equal('userId', userId),
-            Query.orderDesc('scheduledDate'),
+            Query.equal('isCompleted', false),
+            Query.lessThanEqual('dueDate', futureDate.toISOString()),
+            Query.orderAsc('dueDate'),
         ];
 
-        if (status) {
-            queries.push(Query.equal('status', status));
-        }
-
-        return this.listDocuments<TaskDetailDocument>(
-            APPWRITE_CONFIG.collections.taskDetails,
+        return this.listDocuments<TaskDocument>(
+            APPWRITE_CONFIG.collections.tasks,
             queries
         );
     }
 
-    async getTodayTasks(userId: string) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        return this.listDocuments<TaskDetailDocument>(
-            APPWRITE_CONFIG.collections.taskDetails,
-            [
-                Query.equal('userId', userId),
-                Query.greaterThanEqual('scheduledDate', today.toISOString()),
-                Query.lessThan('scheduledDate', tomorrow.toISOString()),
-                Query.orderAsc('scheduledDate')
-            ]
-        );
-    }
-
-    async getUpcomingTasks(userId: string, days: number = 7) {
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + days);
-
-        return this.listDocuments<TaskDetailDocument>(
-            APPWRITE_CONFIG.collections.taskDetails,
-            [
-                Query.equal('userId', userId),
-                Query.greaterThanEqual('scheduledDate', startDate.toISOString()),
-                Query.lessThanEqual('scheduledDate', endDate.toISOString()),
-                Query.equal('status', 'pending'),
-                Query.orderAsc('scheduledDate')
-            ]
-        );
-    }
-
-    async completeTask(taskDetailId: string) {
-        return this.updateDocument<TaskDetailDocument>(
-            APPWRITE_CONFIG.collections.taskDetails,
-            taskDetailId,
+    async completeTask(
+        taskId: string,
+        userId: string
+    ): Promise<ApiResponse<TaskDocument>> {
+        return this.updateDocument<TaskDocument>(
+            APPWRITE_CONFIG.collections.tasks,
+            taskId,
             {
-                status: 'completed',
+                isCompleted: true,
                 completedDate: new Date().toISOString(),
-            }
-        );
-    }
-
-    async updateTaskDetail(
-        taskDetailId: string,
-        data: Partial<Omit<TaskDetailDocument, keyof Models.Document>>
-    ) {
-        return this.updateDocument<TaskDetailDocument>(
-            APPWRITE_CONFIG.collections.taskDetails,
-            taskDetailId,
-            data
-        );
-    }
-
-    async deleteTaskDetail(taskDetailId: string) {
-        return this.deleteDocument(
-            APPWRITE_CONFIG.collections.taskDetails,
-            taskDetailId
+            },
+            [`read("user:${userId}")`, `write("user:${userId}")`]
         );
     }
 
     /**
      * Nutrient operations
      */
-    async createNutrient(nutrientData: Omit<NutrientDocument, keyof Models.Document>) {
-        return this.createDocument<NutrientDocument>(
-            APPWRITE_CONFIG.collections.nutrients,
-            nutrientData,
-            ['read("any")'] // Public catalog
-        );
-    }
-
-    async getNutrient(nutrientId: string) {
-        return this.getDocument<NutrientDocument>(
-            APPWRITE_CONFIG.collections.nutrients,
-            nutrientId
-        );
-    }
-
-    async listNutrients(type?: string) {
-        const queries = type
-            ? [Query.equal('type', type), Query.orderAsc('name')]
-            : [Query.orderAsc('name')];
-
+    async listNutrients(queries?: string[]): Promise<ApiResponse<ListResponse<NutrientDocument>>> {
         return this.listDocuments<NutrientDocument>(
             APPWRITE_CONFIG.collections.nutrients,
             queries
         );
     }
 
-    async searchNutrients(searchTerm: string) {
-        return this.listDocuments<NutrientDocument>(
+    async getNutrient(nutrientId: string): Promise<ApiResponse<NutrientDocument>> {
+        return this.getDocument<NutrientDocument>(
             APPWRITE_CONFIG.collections.nutrients,
-            [
-                Query.search('name', searchTerm),
-                Query.limit(20)
-            ]
+            nutrientId
         );
     }
 
     /**
      * Suggestion operations
      */
-    async createSuggestion(suggestionData: Omit<SuggestionDocument, keyof Models.Document> & { userId: string }) {
-        const permissions = [
-            `read("user:${suggestionData.userId}")`,
-            `write("user:${suggestionData.userId}")`,
-            `delete("user:${suggestionData.userId}")`
-        ];
-
+    async createSuggestion(
+        userId: string,
+        data: Omit<SuggestionDocument, keyof Models.Document | 'userId'>
+    ): Promise<ApiResponse<SuggestionDocument>> {
         return this.createDocument<SuggestionDocument>(
             APPWRITE_CONFIG.collections.suggestions,
-            suggestionData,
-            permissions
+            { ...data, userId },
+            [`read("user:${userId}")`, `write("user:${userId}")`]
         );
     }
 
-    async getUserSuggestions(userId: string, unreadOnly: boolean = false) {
+    async getUserSuggestions(
+        userId: string,
+        unreadOnly: boolean = false
+    ): Promise<ApiResponse<ListResponse<SuggestionDocument>>> {
         const queries = [
             Query.equal('userId', userId),
             Query.equal('isDismissed', false),
-            Query.orderDesc('$createdAt'),
         ];
 
         if (unreadOnly) {
             queries.push(Query.equal('isRead', false));
         }
 
-        // Filter out expired suggestions
-        const now = new Date().toISOString();
-        queries.push(Query.greaterThan('expiresAt', now));
+        queries.push(Query.orderDesc('$createdAt'));
 
         return this.listDocuments<SuggestionDocument>(
             APPWRITE_CONFIG.collections.suggestions,
@@ -592,63 +466,40 @@ class DatabaseService {
         );
     }
 
-    async markSuggestionAsRead(suggestionId: string) {
+    async markSuggestionAsRead(
+        suggestionId: string,
+        userId: string
+    ): Promise<ApiResponse<SuggestionDocument>> {
         return this.updateDocument<SuggestionDocument>(
             APPWRITE_CONFIG.collections.suggestions,
             suggestionId,
-            { isRead: true }
-        );
-    }
-
-    async dismissSuggestion(suggestionId: string) {
-        return this.updateDocument<SuggestionDocument>(
-            APPWRITE_CONFIG.collections.suggestions,
-            suggestionId,
-            { isDismissed: true }
-        );
-    }
-
-    async deleteSuggestion(suggestionId: string) {
-        return this.deleteDocument(
-            APPWRITE_CONFIG.collections.suggestions,
-            suggestionId
+            { isRead: true },
+            [`read("user:${userId}")`, `write("user:${userId}")`]
         );
     }
 
     /**
-     * Utility methods
-     */
-    async checkUserOwnership(collectionId: string, documentId: string, userId: string): Promise<boolean> {
-        try {
-            const result = await this.databases.getDocument(
-                APPWRITE_CONFIG.databaseId,
-                collectionId,
-                documentId
-            );
-
-            return result.userId === userId;
-        } catch (error) {
-            return false;
-        }
-    }
-
-    /**
-     * Get error message
+     * Helper method to get user-friendly error messages
      */
     private getErrorMessage(error: any): string {
         if (error.code === 404) {
             return 'Document not found';
         }
+        
         if (error.code === 401) {
             return 'Unauthorized access';
         }
+        
         if (error.code === 400) {
-            return 'Invalid request';
+            return 'Invalid request data';
         }
-        return error.message || 'Database operation failed';
+
+        return error.message || 'An unexpected error occurred';
     }
 }
 
-// Create and export singleton instance
+// Export service instance
 export const databaseService = new DatabaseService();
+
+// Default export
 export default databaseService;

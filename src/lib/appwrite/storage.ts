@@ -1,17 +1,16 @@
 // src/lib/appwrite/storage.ts
 
-import { ID, ImageGravity, ImageFormat } from 'react-native-appwrite';
-import { appwriteService, APPWRITE_CONFIG } from './config';
-import type { ApiResponse, UploadResponse } from '../../types/api';
 import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ID, ImageFormat, ImageGravity } from 'react-native-appwrite';
+import type { ApiResponse } from '../../types/api';
+import { APPWRITE_CONFIG, appwriteService } from './config';
 
 export interface FileData {
     $id: string;
     bucketId: string;
     $createdAt: string;
     $updatedAt: string;
-    $permissions: string[];
     name: string;
     signature: string;
     mimeType: string;
@@ -20,9 +19,8 @@ export interface FileData {
     chunksUploaded: number;
 }
 
-export interface FileListResponse {
-    total: number;
-    files: FileData[];
+export interface UploadResponse extends ApiResponse {
+    fileId?: string;
 }
 
 export interface FilePreviewOptions {
@@ -47,40 +45,74 @@ class StorageService {
     }
 
     /**
-     * Create a file from URI (for React Native)
+     * Create file object from URI for React Native
+     * This properly handles file uploads in React Native
      */
     private async createFileFromUri(uri: string, fileName?: string): Promise<any> {
         try {
+            // Generate filename if not provided
+            const finalFileName = fileName || `upload_${Date.now()}.jpg`;
+
+            // For React Native with Expo, we need to handle the file differently
+            // The Appwrite SDK expects a specific format for file uploads
+
             // Get file info
             const fileInfo = await FileSystem.getInfoAsync(uri);
             if (!fileInfo.exists) {
                 throw new Error('File does not exist');
             }
 
-            // Determine mime type
-            const extension = uri.split('.').pop()?.toLowerCase() || '';
-            const mimeTypes: Record<string, string> = {
-                'jpg': 'image/jpeg',
-                'jpeg': 'image/jpeg',
-                'png': 'image/png',
-                'gif': 'image/gif',
-                'webp': 'image/webp',
-            };
-            const mimeType = mimeTypes[extension] || 'application/octet-stream';
+            // Read file as base64
+            const base64 = await FileSystem.readAsStringAsync(uri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
 
-            // Create file object for Appwrite
-            const file = {
-                name: fileName || `upload_${Date.now()}.${extension}`,
+            // Create blob from base64
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+
+            // Determine MIME type
+            const mimeType = this.getMimeTypeFromUri(uri, finalFileName);
+
+            // Create blob
+            const blob = new Blob([byteArray], { type: mimeType });
+
+            // Return file object that Appwrite SDK expects
+            return {
+                name: finalFileName,
                 type: mimeType,
-                size: fileInfo.size || 0,
-                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+                size: byteArray.length,
+                uri: uri,
+                // For React Native, we pass the actual file data
+                // The SDK will handle the upload properly
+                _parts: [[finalFileName, blob]],
             };
-
-            return file;
         } catch (error) {
             console.error('Error creating file from URI:', error);
             throw error;
         }
+    }
+
+    /**
+     * Helper to determine MIME type from URI
+     */
+    private getMimeTypeFromUri(uri: string, fileName: string): string {
+        const extension = fileName.split('.').pop()?.toLowerCase() || '';
+
+        const mimeTypes: Record<string, string> = {
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'pdf': 'application/pdf',
+        };
+
+        return mimeTypes[extension] || 'application/octet-stream';
     }
 
     /**
@@ -95,17 +127,21 @@ class StorageService {
         try {
             console.log(`Uploading file to bucket: ${bucketId}`);
 
-            // Create file object from URI
-            const file = await this.createFileFromUri(fileUri, fileName);
-
-            // Generate unique ID
+            // For React Native, we need to handle the file upload differently
+            // The Appwrite React Native SDK expects the file URI directly
             const fileId = ID.unique();
+            const finalFileName = fileName || `upload_${Date.now()}.jpg`;
 
-            // Upload file
+            // The React Native SDK handles file uploads from URIs directly
             const response = await this.storage.createFile(
                 bucketId,
                 fileId,
-                file,
+                {
+                    name: finalFileName,
+                    type: this.getMimeTypeFromUri(fileUri, finalFileName),
+                    size: 0, // Size will be determined by the SDK
+                    uri: fileUri,
+                } as any,
                 permissions
             );
 
@@ -124,12 +160,32 @@ class StorageService {
     }
 
     /**
+     * Upload image from image picker result
+     */
+    async uploadImageFromPicker(
+        bucketId: string,
+        pickerResult: ImagePicker.ImagePickerResult,
+        fileName?: string,
+        permissions?: string[]
+    ): Promise<UploadResponse> {
+        if (pickerResult.canceled || !pickerResult.assets?.[0]) {
+            return {
+                success: false,
+                message: 'No image selected',
+            };
+        }
+
+        const asset = pickerResult.assets[0];
+        return this.uploadFile(bucketId, asset.uri, fileName, permissions);
+    }
+
+    /**
      * Get file metadata
      */
     async getFile(bucketId: string, fileId: string): Promise<ApiResponse<FileData>> {
         try {
             const file = await this.storage.getFile(bucketId, fileId);
-            
+
             return {
                 success: true,
                 message: 'File retrieved successfully',
@@ -140,6 +196,27 @@ class StorageService {
             return {
                 success: false,
                 message: error.message || 'Failed to get file',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Delete file
+     */
+    async deleteFile(bucketId: string, fileId: string): Promise<ApiResponse> {
+        try {
+            await this.storage.deleteFile(bucketId, fileId);
+
+            return {
+                success: true,
+                message: 'File deleted successfully',
+            };
+        } catch (error: any) {
+            console.error('Delete file error:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to delete file',
                 error: error.message,
             };
         }
@@ -191,7 +268,7 @@ class StorageService {
         bucketId: string,
         queries?: string[],
         search?: string
-    ): Promise<ApiResponse<FileListResponse>> {
+    ): Promise<ApiResponse<FileData[]>> {
         try {
             const response = await this.storage.listFiles(
                 bucketId,
@@ -201,11 +278,8 @@ class StorageService {
 
             return {
                 success: true,
-                message: 'Files listed successfully',
-                data: {
-                    total: response.total,
-                    files: response.files as FileData[],
-                },
+                message: 'Files retrieved successfully',
+                data: response.files as FileData[],
             };
         } catch (error: any) {
             console.error('List files error:', error);
@@ -218,71 +292,23 @@ class StorageService {
     }
 
     /**
-     * Update file metadata
-     */
-    async updateFile(
-        bucketId: string,
-        fileId: string,
-        name?: string,
-        permissions?: string[]
-    ): Promise<ApiResponse<FileData>> {
-        try {
-            const response = await this.storage.updateFile(
-                bucketId,
-                fileId,
-                name,
-                permissions
-            );
-
-            return {
-                success: true,
-                message: 'File updated successfully',
-                data: response as FileData,
-            };
-        } catch (error: any) {
-            console.error('Update file error:', error);
-            return {
-                success: false,
-                message: error.message || 'Failed to update file',
-                error: error.message,
-            };
-        }
-    }
-
-    /**
-     * Delete a file
-     */
-    async deleteFile(bucketId: string, fileId: string): Promise<ApiResponse> {
-        try {
-            await this.storage.deleteFile(bucketId, fileId);
-
-            return {
-                success: true,
-                message: 'File deleted successfully',
-            };
-        } catch (error: any) {
-            console.error('Delete file error:', error);
-            return {
-                success: false,
-                message: error.message || 'Failed to delete file',
-                error: error.message,
-            };
-        }
-    }
-
-    /**
      * Helper method to upload plant image
      */
     async uploadPlantImage(
         fileUri: string,
-        plantName: string
+        plantName: string,
+        userId?: string
     ): Promise<UploadResponse> {
         const fileName = `plant_${plantName.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.jpg`;
+        const permissions = userId
+            ? [`read("user:${userId}")`, `write("user:${userId}")`]
+            : ['read("any")'];
+
         return this.uploadFile(
             APPWRITE_CONFIG.buckets.plantImages,
             fileUri,
             fileName,
-            ['read("any")'] // Public read access
+            permissions
         );
     }
 
@@ -349,24 +375,17 @@ class StorageService {
     }
 
     /**
+     * Get nutrient image URL
+     */
+    getNutrientImageUrl(fileId: string): string {
+        return this.getFileView(APPWRITE_CONFIG.buckets.nutrientImages, fileId);
+    }
+
+    /**
      * Get task icon URL
      */
     getTaskIconUrl(fileId: string): string {
         return this.getFileView(APPWRITE_CONFIG.buckets.taskImages, fileId);
-    }
-
-    /**
-     * Get nutrient image URL
-     */
-    getNutrientImageUrl(fileId: string, preview: boolean = false): string {
-        if (preview) {
-            return this.getFilePreview(APPWRITE_CONFIG.buckets.nutrientImages, fileId, {
-                width: 200,
-                height: 200,
-                quality: 80,
-            });
-        }
-        return this.getFileView(APPWRITE_CONFIG.buckets.nutrientImages, fileId);
     }
 
     /**
@@ -389,15 +408,10 @@ class StorageService {
     getDashboardAssetUrl(fileId: string): string {
         return this.getFileView(APPWRITE_CONFIG.buckets.dashboardAssets, fileId);
     }
-
-    /**
-     * Generic method to get file URL for any bucket
-     */
-    getFileUrl(bucketId: string, fileId: string): string {
-        return this.getFileView(bucketId, fileId);
-    }
 }
 
-// Create and export singleton instance
+// Export service instance
 export const storageService = new StorageService();
+
+// Default export
 export default storageService;

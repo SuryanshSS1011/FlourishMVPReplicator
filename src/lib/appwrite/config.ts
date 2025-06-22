@@ -1,18 +1,18 @@
 // src/lib/appwrite/config.ts
 
-import { Client, Account, Databases, Storage, Functions, Avatars, ID, Query } from 'react-native-appwrite';
+import { Account, Avatars, Client, Databases, Functions, ID, Query, Storage } from 'react-native-appwrite';
 
 // Environment configuration with validation
 export const APPWRITE_CONFIG = {
     // Core Appwrite settings
-    endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
-    projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
-    platform: process.env.EXPO_PUBLIC_APPWRITE_PLATFORM,
+    endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1',
+    projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID || '',
+    platform: process.env.EXPO_PUBLIC_APPWRITE_PLATFORM || '',
 
     // Database configuration
     databaseId: process.env.EXPO_PUBLIC_DATABASE_ID || '',
 
-    // Collection IDs - NO USERS COLLECTION NEEDED
+    // Collection IDs
     collections: {
         plants: process.env.EXPO_PUBLIC_PLANTS_COLLECTION_ID || '',
         userPlants: process.env.EXPO_PUBLIC_USER_PLANTS_COLLECTION_ID || '',
@@ -45,29 +45,32 @@ export const APPWRITE_CONFIG = {
 // Validation function
 export const validateAppwriteConfig = (): { isValid: boolean; missingVars: string[]; warnings: string[] } => {
     const requiredVars = [
-        'EXPO_PUBLIC_APPWRITE_PROJECT_ID',
-        'EXPO_PUBLIC_DATABASE_ID',
-        'EXPO_PUBLIC_PLANTS_COLLECTION_ID',
-        'EXPO_PUBLIC_USER_PLANTS_COLLECTION_ID',
-        'EXPO_PUBLIC_TASKS_COLLECTION_ID',
-        'EXPO_PUBLIC_TASK_DETAILS_COLLECTION_ID',
+        'endpoint',
+        'projectId',
+        'databaseId',
     ];
 
-    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    const missingVars: string[] = [];
+
+    // Check required configuration
+    if (!APPWRITE_CONFIG.projectId) missingVars.push('EXPO_PUBLIC_APPWRITE_PROJECT_ID');
+    if (!APPWRITE_CONFIG.databaseId) missingVars.push('EXPO_PUBLIC_DATABASE_ID');
+
     const warnings: string[] = [];
 
-    // Check optional but recommended vars
-    const optionalVars = [
-        'EXPO_PUBLIC_NUTRIENTS_COLLECTION_ID',
-        'EXPO_PUBLIC_SUGGESTIONS_COLLECTION_ID',
-        'EXPO_PUBLIC_PLANT_IMAGES_BUCKET_ID',
-        'EXPO_PUBLIC_BACKGROUNDS_BUCKET_ID',
-    ];
+    // Check collections
+    Object.entries(APPWRITE_CONFIG.collections).forEach(([key, value]) => {
+        if (!value) {
+            warnings.push(`Missing collection ID for: ${key}`);
+        }
+    });
 
-    const missingOptional = optionalVars.filter(varName => !process.env[varName]);
-    if (missingOptional.length > 0) {
-        warnings.push(`Optional variables missing: ${missingOptional.join(', ')}`);
-    }
+    // Check buckets
+    Object.entries(APPWRITE_CONFIG.buckets).forEach(([key, value]) => {
+        if (!value) {
+            warnings.push(`Missing bucket ID for: ${key}`);
+        }
+    });
 
     return {
         isValid: missingVars.length === 0,
@@ -89,9 +92,9 @@ class AppwriteService {
 
     private constructor() {
         this.client = new Client()
-            .setEndpoint(APPWRITE_CONFIG.endpoint || '')
-            .setProject(APPWRITE_CONFIG.projectId || '')
-            .setPlatform(APPWRITE_CONFIG.platform || '');
+            .setEndpoint(APPWRITE_CONFIG.endpoint)
+            .setProject(APPWRITE_CONFIG.projectId)
+            .setPlatform(APPWRITE_CONFIG.platform);
 
         this.account = new Account(this.client);
         this.databases = new Databases(this.client);
@@ -128,7 +131,7 @@ class AppwriteService {
                 console.error('Invalid Appwrite configuration:', validation.missingVars);
                 return {
                     success: false,
-                    error: 'Missing required configuration',
+                    error: 'Missing required configuration: ' + validation.missingVars.join(', '),
                 };
             }
 
@@ -136,33 +139,39 @@ class AppwriteService {
                 console.warn('Appwrite configuration warnings:', validation.warnings);
             }
 
-            // Check for existing session
+            // Try to get current session
             try {
-                await this.account.getSession('current');
-                const user = await this.account.get();
-                this.initialized = true;
-                
-                return {
-                    success: true,
-                    user: {
-                        ...user,
-                        prefs: {
-                            ...user.prefs,
-                            // Ensure default preferences
-                            onboardingCompleted: user.prefs.onboardingCompleted ?? false,
-                            totalPoints: user.prefs.totalPoints ?? 0,
-                            currentStreak: user.prefs.currentStreak ?? 0,
-                            notificationsEnabled: user.prefs.notificationsEnabled ?? true,
+                const session = await this.account.getSession('current');
+                if (session) {
+                    const user = await this.account.get();
+                    this.initialized = true;
+
+                    return {
+                        success: true,
+                        user: {
+                            ...user,
+                            prefs: {
+                                ...user.prefs,
+                                // Ensure default preferences
+                                onboardingCompleted: user.prefs?.onboardingCompleted ?? false,
+                                totalPoints: user.prefs?.totalPoints ?? 0,
+                                currentStreak: user.prefs?.currentStreak ?? 0,
+                                notificationsEnabled: user.prefs?.notificationsEnabled ?? true,
+                            }
                         }
-                    }
-                };
-            } catch {
-                // No active session
-                this.initialized = true;
-                return { success: true };
+                    };
+                }
+            } catch (sessionError) {
+                // No active session - this is fine for initial app load
+                console.log('No active session found');
             }
+
+            this.initialized = true;
+            return { success: true };
+
         } catch (error: any) {
             console.error('Appwrite initialization error:', error);
+            this.initialized = false;
             return {
                 success: false,
                 error: error.message || 'Failed to initialize Appwrite',
@@ -173,21 +182,37 @@ class AppwriteService {
     // Health check
     async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; details: any }> {
         try {
-            // Test account service
-            await this.account.get().catch(() => null);
+            // Test account service - don't throw on failure
+            let accountStatus = 'unavailable';
+            try {
+                await this.account.get();
+                accountStatus = 'authenticated';
+            } catch {
+                accountStatus = 'not authenticated';
+            }
 
-            // Test database connection
-            await this.databases.listDocuments(
-                APPWRITE_CONFIG.databaseId,
-                APPWRITE_CONFIG.collections.plants,
-                [Query.limit(1)]
-            );
+            // Test database connection if we have the IDs
+            let databaseStatus = 'unavailable';
+            if (APPWRITE_CONFIG.databaseId && APPWRITE_CONFIG.collections.plants) {
+                try {
+                    await this.databases.listDocuments(
+                        APPWRITE_CONFIG.databaseId,
+                        APPWRITE_CONFIG.collections.plants,
+                        [Query.limit(1)]
+                    );
+                    databaseStatus = 'connected';
+                } catch {
+                    databaseStatus = 'error';
+                }
+            }
 
             return {
                 status: 'healthy',
                 details: {
                     endpoint: APPWRITE_CONFIG.endpoint,
                     projectId: APPWRITE_CONFIG.projectId,
+                    accountStatus,
+                    databaseStatus,
                     timestamp: new Date().toISOString(),
                 }
             };
@@ -216,7 +241,7 @@ export const appwriteService = AppwriteService.getInstance();
 export { ID, Query };
 
 // Export types
-export type { Models } from 'react-native-appwrite';
+    export type { Models } from 'react-native-appwrite';
 
 // Default export
 export default appwriteService;
