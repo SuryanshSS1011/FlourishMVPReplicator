@@ -1,8 +1,8 @@
 // src/lib/appwrite/auth.ts
 
 import { ID, Models, OAuthProvider } from 'react-native-appwrite';
-import { appwriteService } from './config';
 import type { ApiResponse } from '../../types/api';
+import { appwriteService } from './config';
 
 // User type extends Appwrite Models.User
 export interface User extends Models.User<UserPreferences> {

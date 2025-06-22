@@ -21,7 +21,7 @@ export interface AuthStore {
     register: (name: string, email: string, password: string) => Promise<ApiResponse<User>>;
     logout: () => Promise<void>;
     checkSession: () => Promise<void>;
-    updateProfile: (data: { name?: string; email?: string; password?: string }) => Promise<ApiResponse<User>>;
+    updateProfile: (data: { name?: string; email?: string; password?: string; oldPassword?: string }) => Promise<ApiResponse<User>>;
     updatePreferences: (preferences: Partial<UserPreferences>) => Promise<ApiResponse<User>>;
     completeOnboarding: () => Promise<void>;
     addPoints: (points: number) => Promise<void>;
@@ -51,15 +51,17 @@ export const useAuthStore = create<AuthStore>()(
 
             // Initialize app
             initialize: async () => {
-                if (get().initialized) return;
+                if (get().initialized) {
+                    return;
+                }
 
                 set({ loading: true });
                 try {
                     const result = await authService.getCurrentUser();
-                    
+
                     if (result.success && result.data) {
                         const sessionResult = await authService.getCurrentSession();
-                        
+
                         set({
                             user: result.data,
                             session: sessionResult.data || null,
@@ -70,15 +72,22 @@ export const useAuthStore = create<AuthStore>()(
                         // Update activity
                         await authService.updateUserActivity();
                     } else {
+                        // No user session - this is fine
                         set({
+                            user: null,
+                            session: null,
                             initialized: true,
                             loading: false,
                         });
                     }
-                } catch (error) {
+                } catch (error: any) {
+                    console.error('Initialize error:', error);
                     set({
+                        user: null,
+                        session: null,
                         initialized: true,
                         loading: false,
+                        error: error.message,
                     });
                 }
             },
@@ -173,9 +182,6 @@ export const useAuthStore = create<AuthStore>()(
                         loading: false,
                         error: null,
                     });
-
-                    // Clear AsyncStorage
-                    await AsyncStorage.removeItem('auth-storage');
                 } catch (error: any) {
                     set({
                         loading: false,
@@ -190,7 +196,7 @@ export const useAuthStore = create<AuthStore>()(
 
                 try {
                     const userResult = await authService.getCurrentUser();
-                    
+
                     if (userResult.success && userResult.data) {
                         const sessionResult = await authService.getCurrentSession();
 
@@ -215,12 +221,13 @@ export const useAuthStore = create<AuthStore>()(
                         user: null,
                         session: null,
                         loading: false,
+                        error: error.message,
                     });
                 }
             },
 
             // Update profile
-            updateProfile: async (data: { name?: string; email?: string; password?: string }) => {
+            updateProfile: async (data) => {
                 set({ loading: true, error: null });
 
                 try {
@@ -232,14 +239,14 @@ export const useAuthStore = create<AuthStore>()(
                             loading: false,
                             error: null,
                         });
+                        return result;
                     } else {
                         set({
                             loading: false,
                             error: result.message,
                         });
+                        return result;
                     }
-
-                    return result;
                 } catch (error: any) {
                     const errorMessage = error.message || 'Update failed';
                     set({
@@ -267,14 +274,14 @@ export const useAuthStore = create<AuthStore>()(
                             loading: false,
                             error: null,
                         });
+                        return result;
                     } else {
                         set({
                             loading: false,
                             error: result.message,
                         });
+                        return result;
                     }
-
-                    return result;
                 } catch (error: any) {
                     const errorMessage = error.message || 'Update failed';
                     set({
@@ -291,61 +298,42 @@ export const useAuthStore = create<AuthStore>()(
 
             // Complete onboarding
             completeOnboarding: async () => {
-                const result = await authService.completeOnboarding();
-                if (result.success) {
-                    const user = get().user;
-                    if (user) {
-                        set({
-                            user: {
-                                ...user,
-                                prefs: {
-                                    ...user.prefs,
-                                    onboardingCompleted: true,
-                                }
-                            }
-                        });
-                    }
+                const { user } = get();
+                if (!user) {
+                    return;
                 }
+
+                await get().updatePreferences({
+                    onboardingCompleted: true,
+                });
             },
 
             // Add points
             addPoints: async (points: number) => {
-                const result = await authService.addPoints(points);
-                if (result.success && result.data) {
-                    const user = get().user;
-                    if (user) {
-                        set({
-                            user: {
-                                ...user,
-                                prefs: {
-                                    ...user.prefs,
-                                    totalPoints: result.data,
-                                }
-                            }
-                        });
-                    }
+                const { user } = get();
+                if (!user) {
+                    return;
                 }
+
+                const currentPoints = user.prefs?.totalPoints || 0;
+                await get().updatePreferences({
+                    totalPoints: currentPoints + points,
+                });
             },
 
             // Add achievement
             addAchievement: async (achievementId: string) => {
-                const result = await authService.addAchievement(achievementId);
-                if (result.success) {
-                    const user = get().user;
-                    if (user) {
-                        const achievements = (user.prefs.achievements || []) as string[];
-                        if (!achievements.includes(achievementId)) {
-                            set({
-                                user: {
-                                    ...user,
-                                    prefs: {
-                                        ...user.prefs,
-                                        achievements: [...achievements, achievementId],
-                                    }
-                                }
-                            });
-                        }
-                    }
+                const { user } = get();
+                if (!user) {
+                    return;
+                }
+
+                const achievements = user.prefs?.achievements || [];
+                if (!achievements.includes(achievementId)) {
+                    await get().updatePreferences({
+                        achievements: [...achievements, achievementId],
+                        lastAchievement: achievementId,
+                    });
                 }
             },
 
@@ -354,27 +342,22 @@ export const useAuthStore = create<AuthStore>()(
                 set({ error: null });
             },
 
-            // Check if authenticated
+            // Getters
             isAuthenticated: () => {
                 return !!get().user && !!get().session;
             },
 
-            // Get preference
             getPreference: <K extends keyof UserPreferences>(key: K) => {
-                const user = get().user;
-                return user?.prefs?.[key] as UserPreferences[K] | undefined;
+                return get().user?.prefs?.[key];
             },
 
-            // Get user stats
             getUserStats: () => {
-                const user = get().user;
-                const prefs = user?.prefs || {};
-                
+                const { user } = get();
                 return {
-                    totalPoints: (prefs.totalPoints as number) || 0,
-                    currentStreak: (prefs.currentStreak as number) || 0,
-                    totalTasksCompleted: (prefs.totalTasksCompleted as number) || 0,
-                    achievements: (prefs.achievements as string[]) || [],
+                    totalPoints: user?.prefs?.totalPoints || 0,
+                    currentStreak: user?.prefs?.currentStreak || 0,
+                    totalTasksCompleted: user?.prefs?.totalTasksCompleted || 0,
+                    achievements: user?.prefs?.achievements || [],
                 };
             },
         }),
@@ -384,14 +367,8 @@ export const useAuthStore = create<AuthStore>()(
             partialize: (state) => ({
                 user: state.user,
                 session: state.session,
+                initialized: state.initialized,
             }),
         }
     )
 );
-
-// Helper hooks
-export const useUser = () => useAuthStore((state) => state.user);
-export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated());
-export const useUserPreference = <K extends keyof UserPreferences>(key: K) => 
-    useAuthStore((state) => state.getPreference(key));
-export const useUserStats = () => useAuthStore((state) => state.getUserStats());

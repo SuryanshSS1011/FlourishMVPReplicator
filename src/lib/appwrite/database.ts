@@ -64,7 +64,7 @@ export interface NutrientDocument extends Models.Document {
 export interface TaskDocument extends Models.Document {
     userId: string; // Appwrite User ID
     userPlantId?: string;
-    type: 'water' | 'fertilize' | 'prune' | 'repot' | 'custom';
+    type: 'water' | 'fertilize' | 'prune' | 'report' | 'custom';
     title: string;
     description?: string;
     dueDate: string;

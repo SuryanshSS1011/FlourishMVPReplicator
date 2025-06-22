@@ -53,8 +53,12 @@ export const validateAppwriteConfig = (): { isValid: boolean; missingVars: strin
     const missingVars: string[] = [];
 
     // Check required configuration
-    if (!APPWRITE_CONFIG.projectId) missingVars.push('EXPO_PUBLIC_APPWRITE_PROJECT_ID');
-    if (!APPWRITE_CONFIG.databaseId) missingVars.push('EXPO_PUBLIC_DATABASE_ID');
+    if (!APPWRITE_CONFIG.projectId) {
+        missingVars.push('EXPO_PUBLIC_APPWRITE_PROJECT_ID');
+    }
+    if (!APPWRITE_CONFIG.databaseId) {
+        missingVars.push('EXPO_PUBLIC_DATABASE_ID');
+    }
 
     const warnings: string[] = [];
 
