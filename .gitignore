@@ -2,6 +2,10 @@
 
 # dependencies
 node_modules/
+npm-shrinkwrap.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Expo
 .expo/
@@ -29,12 +33,53 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Temporary folders
+tmp/
+temp/
 
 # local env files
 #.env
 
-
 # typescript
 *.tsbuildinfo
+
+# Build outputs
+build/
+out/
 
 app-example
