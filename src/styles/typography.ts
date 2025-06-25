@@ -2,10 +2,15 @@
 
 export const typography = {
     fonts: {
-        primary: 'Roboto',
-        secondary: 'Ubuntu',
+        primary: 'Roboto-Regular',
+        primaryLight: 'Roboto-Light',
+        primaryMedium: 'Roboto-Medium',
+        primaryBold: 'Roboto-Bold',
+        secondary: 'Ubuntu-Regular',
+        secondaryBold: 'Ubuntu-Bold',
         accent: 'Turbinado',
         system: 'PlusJakartaSans-Regular',
+        mono: 'SpaceMono-Regular',
     },
 
     sizes: {
@@ -22,6 +27,7 @@ export const typography = {
     },
 
     weights: {
+        light: '300',
         normal: '400',
         medium: '500',
         semibold: '600',

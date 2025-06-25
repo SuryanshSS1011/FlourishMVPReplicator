@@ -24,8 +24,16 @@ export const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
     const loadFonts = async () => {
         try {
             await Font.loadAsync({
-                // Add your custom fonts here
-                // 'CustomFont': require('../assets/fonts/CustomFont.ttf'),
+                // Roboto font family
+                'Roboto-Light': require('../../assets/fonts/Roboto-Light.ttf'),
+                'Roboto-Regular': require('../../assets/fonts/Roboto-Regular.ttf'),
+                'Roboto-Medium': require('../../assets/fonts/Roboto-Medium.ttf'),
+                'Roboto-Bold': require('../../assets/fonts/Roboto-Bold.ttf'),
+                
+                // Other existing fonts
+                'Ubuntu-Regular': require('../../assets/fonts/Ubuntu-Regular.ttf'),
+                'Ubuntu-Bold': require('../../assets/fonts/Ubuntu-Bold.ttf'),
+                'SpaceMono-Regular': require('../../assets/fonts/SpaceMono-Regular.ttf'),
             });
         } catch (error) {
             console.warn('Font loading error:', error);
